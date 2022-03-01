@@ -43,6 +43,7 @@ static SPEC_VERSIONS: &[Version] = &[
     Version::new(1, 1, 0),
     Version::new(1, 4, 0),
     Version::new(1, 5, 0),
+    Version::new(1, 7, 0),
 ];
 
 const SKIPPED_OPERATIONS: &[&str] = &[
