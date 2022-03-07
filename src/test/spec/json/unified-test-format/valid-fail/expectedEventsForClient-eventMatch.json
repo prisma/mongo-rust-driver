@@ -16,7 +16,7 @@
         {
           "client": "client0",
           "events": [],
-          "eventMatch": 0
+          "ignoreExtraEvents": 0
         }
       ]
     }

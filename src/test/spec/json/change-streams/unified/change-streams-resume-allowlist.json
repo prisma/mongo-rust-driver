@@ -178,7 +178,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -312,7 +312,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -446,7 +446,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -580,7 +580,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -714,7 +714,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -848,7 +848,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -982,7 +982,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1116,7 +1116,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1250,7 +1250,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1384,7 +1384,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1518,7 +1518,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1652,7 +1652,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1786,7 +1786,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -1920,7 +1920,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -2054,7 +2054,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -2188,7 +2188,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -2322,7 +2322,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {
@@ -2455,7 +2455,7 @@
       "expectEvents": [
         {
           "client": "client0",
-          "eventMatch": "prefix",
+          "ignoreExtraEvents": true,
           "events": [
             {
               "commandStartedEvent": {

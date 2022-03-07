@@ -104,7 +104,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -180,7 +180,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -256,7 +256,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -331,7 +331,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -407,7 +407,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -483,7 +483,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -559,7 +559,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -635,7 +635,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -711,7 +711,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -787,7 +787,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -863,7 +863,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -939,7 +939,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -1015,7 +1015,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -1091,7 +1091,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -1167,7 +1167,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -1243,7 +1243,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -1323,7 +1323,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:

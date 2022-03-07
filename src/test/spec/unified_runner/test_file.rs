@@ -305,7 +305,8 @@ pub struct ExpectedEvents {
     pub client: String,
     pub events: Vec<ExpectedEvent>,
     pub event_type: Option<ExpectedEventType>,
-    pub event_match: Option<EventMatch>,
+    #[serde(default)]
+    pub ignore_extra_events: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]

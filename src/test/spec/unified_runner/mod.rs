@@ -236,20 +236,21 @@ pub async fn run_unified_format_test_filtered(
 
                 let expected_events = &expected.events;
 
-                match expected.event_match.unwrap_or(test_file::EventMatch::Exact) {
-                    test_file::EventMatch::Exact => assert_eq!(
+                if expected.ignore_extra_events {
+                    assert!(
+                        actual_events.len() >= expected_events.len(),
+                        "actual:\n{:#?}\nexpected:\n{:#?}",
+                        actual_events,
+                        expected_events
+                    );
+                } else {
+                    assert_eq!(
                         actual_events.len(),
                         expected_events.len(),
                         "actual:\n{:#?}\nexpected:\n{:#?}",
                         actual_events,
                         expected_events
-                    ),
-                    test_file::EventMatch::Prefix => assert!(
-                        actual_events.len() >= expected_events.len(),
-                        "actual:\n{:#?}\nexpected:\n{:#?}",
-                        actual_events,
-                        expected_events
-                    ),
+                    );
                 }
 
                 for (actual, expected) in actual_events.iter().zip(expected_events) {

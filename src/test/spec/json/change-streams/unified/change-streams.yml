@@ -145,7 +145,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -229,7 +229,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -277,7 +277,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -343,7 +343,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -419,7 +419,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -517,7 +517,7 @@ tests:
             coll: *collection0
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -563,7 +563,7 @@ tests:
           operationType: invalidate
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -602,7 +602,7 @@ tests:
           operationType: invalidate
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
@@ -690,7 +690,7 @@ tests:
               $$exists: true
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:

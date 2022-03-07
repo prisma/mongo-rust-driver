@@ -23,7 +23,7 @@ initialData:
     documents: []
 
 tests:
-  - description: eventMatch can be set to exact
+  - description: ignoreExtraEvents can be set to false
     operations:
       - name: insertOne
         object: *collection0
@@ -31,7 +31,7 @@ tests:
           document: &insertDocument1 { _id: 1 }
     expectEvents:
       - client: *client0
-        eventMatch: exact
+        ignoreExtraEvents: false
         events:
           - commandStartedEvent:
               command:
@@ -40,7 +40,7 @@ tests:
                   - *insertDocument1
               commandName: insert
 
-  - description: eventMatch can be set to prefix
+  - description: ignoreExtraEvents can be set to false
     operations:
       - name: insertOne
         object: *collection0
@@ -52,7 +52,7 @@ tests:
           document: { _id: 3 }
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:

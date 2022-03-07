@@ -85,7 +85,7 @@ tests:
           errorCode: 40324
     expectEvents:
       - client: *client0
-        eventMatch: prefix
+        ignoreExtraEvents: true
         events:
           - commandStartedEvent:
               command:
