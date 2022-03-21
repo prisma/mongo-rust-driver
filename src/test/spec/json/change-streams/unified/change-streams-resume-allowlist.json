@@ -91,13 +91,6 @@
       }
     }
   ],
-  "initialData": [
-    {
-      "collectionName": "collection0",
-      "databaseName": "database0",
-      "documents": []
-    }
-  ],
   "tests": [
     {
       "description": "change stream resumes after a network error",
