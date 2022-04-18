@@ -111,6 +111,8 @@ pub struct IndexOptions {
     /// A flag that determines whether the index is hidden from the query planner. A
     /// hidden index is not evaluated as part of the query plan selection.
     pub hidden: Option<bool>,
+
+    pub clustered: Option<bool>,
 }
 
 /// The version of the index. Version 0 Indexes are disallowed as of MongoDB 3.2.
