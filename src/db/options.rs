@@ -107,7 +107,7 @@ pub struct CreateCollectionOptions {
     /// Options for supporting change stream pre- and post-images.
     pub change_stream_pre_and_post_images: Option<ChangeStreamPreAndPostImages>,
 
-    pub clustered_index: Option<ClusteredIndex>,
+    pub clustered_index: Option<Document>,
 }
 
 /// Specifies how strictly the database should apply validation rules to existing documents during
@@ -135,13 +135,6 @@ pub enum ValidationAction {
     Error,
     /// Raise a warning if inserted documents do not pass the validation.
     Warn,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", untagged)]
-pub enum ClusteredIndex {
-    Options(Document),
-    Legacy(bool),
 }
 
 /// Specifies default configuration for indexes created on a collection, including the _id index.
