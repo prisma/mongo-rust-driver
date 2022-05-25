@@ -55,7 +55,7 @@ pub trait TestOperation: Debug {
         &'a self,
         _test_runner: &'a mut TestRunner,
     ) -> BoxFuture<'a, ()> {
-        todo!()
+        panic!("no implementation of execute_test_runner_operation for {:?}", self)
     }
 
     fn execute_entity_operation<'a>(
@@ -63,7 +63,7 @@ pub trait TestOperation: Debug {
         _id: &'a str,
         _test_runner: &'a mut TestRunner,
     ) -> BoxFuture<'a, Result<Option<Entity>>> {
-        todo!()
+        panic!("no implementation of execute_entity_operation for {:?}", self)
     }
 
     /// Whether or not this operation returns an array of root documents. This information is
@@ -205,7 +205,8 @@ impl<'de> Deserialize<'de> for Operation {
             "close" => deserialize_op::<Close>(definition.arguments),
             "createChangeStream" => deserialize_op::<CreateChangeStream>(definition.arguments),
             "rename" => deserialize_op::<RenameCollection>(definition.arguments),
-            _ => Ok(Box::new(UnimplementedOperation) as Box<dyn TestOperation>),
+            "dropIndex" => deserialize_op::<DropIndex>(definition.arguments),
+            name => Ok(Box::new(UnimplementedOperation(name.to_string())) as Box<dyn TestOperation>),
         }
         .map_err(|e| serde::de::Error::custom(format!("{}", e)))?;
 
@@ -1327,7 +1328,7 @@ pub(super) struct RunCommand {
     // We don't need to use this field, but it needs to be included during deserialization so that
     // we can use the deny_unknown_fields tag.
     #[serde(rename = "commandName")]
-    _command_name: String,
+    _command_name: Option<String>,
     read_concern: Option<Document>,
     read_preference: Option<SelectionCriteria>,
     session: Option<String>,
@@ -1894,6 +1895,7 @@ impl TestOperation for CreateChangeStream {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct RenameCollection {
     to: String,
+    drop_target: Option<bool>,
 }
 
 impl TestOperation for RenameCollection {
@@ -1907,10 +1909,13 @@ impl TestOperation for RenameCollection {
             let ns = target.namespace();
             let mut to_ns = ns.clone();
             to_ns.coll = self.to.clone();
-            let cmd = doc! {
+            let mut cmd = doc! {
                 "renameCollection": crate::bson::to_bson(&ns)?,
                 "to": crate::bson::to_bson(&to_ns)?,
             };
+            if let Some(dt) = self.drop_target {
+                cmd.insert("dropTarget", dt);
+            }
             let admin = test_runner.internal_client.database("admin");
             admin.run_command(cmd, None).await?;
             Ok(None)
@@ -1920,6 +1925,27 @@ impl TestOperation for RenameCollection {
 }
 
 #[derive(Debug, Deserialize)]
-pub(super) struct UnimplementedOperation;
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct DropIndex {
+    name: String,
+}
+
+impl TestOperation for DropIndex {
+    fn execute_entity_operation<'a>(
+        &'a self,
+        id: &'a str,
+        test_runner: &'a mut TestRunner,
+    ) -> BoxFuture<'a, Result<Option<Entity>>> {
+        async move {
+            let target = test_runner.get_collection(id);
+            target.drop_index(&self.name, None).await?;
+            Ok(None)
+        }
+        .boxed()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct UnimplementedOperation(String);
 
 impl TestOperation for UnimplementedOperation {}

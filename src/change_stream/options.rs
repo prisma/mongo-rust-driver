@@ -59,6 +59,12 @@ pub struct ChangeStreamOptions {
     #[builder(default)]
     pub start_after: Option<ResumeToken>,
 
+    #[builder(default)]
+    pub show_expanded_events: Option<bool>,
+
+    #[builder(default)]
+    pub show_system_events: Option<bool>,
+
     /// If `true`, the change stream will monitor all changes for the given cluster.
     #[builder(default, setter(skip))]
     pub(crate) all_changes_for_cluster: Option<bool>,

@@ -74,6 +74,8 @@ pub struct ChangeStreamEvent<T> {
     /// The new name for the `ns` collection.  Only included for `OperationType::Rename`.
     pub to: Option<ChangeNamespace>,
 
+    pub operation_description: Option<Document>,
+
     /// A `Document` that contains the `_id` of the document created or modified by the `insert`,
     /// `replace`, `delete`, `update` operations (i.e. CRUD operations). For sharded collections,
     /// also displays the full shard key for the document. The `_id` field is not repeated if it is
@@ -168,6 +170,14 @@ pub enum OperationType {
     /// See [invalidate-event](https://docs.mongodb.com/manual/reference/change-events/#invalidate-event)
     Invalidate,
 
+    CreateIndexes,
+    DropIndexes,
+    Modify,
+    Create,
+    ShardCollection,
+    RefineCollectionShardKey,
+    ReshardCollection,
+
     /// A catch-all for future event types.
     Other(String),
 }
@@ -183,6 +193,13 @@ enum OperationTypeHelper {
     Rename,
     DropDatabase,
     Invalidate,
+    CreateIndexes,
+    DropIndexes,
+    Modify,
+    Create,
+    ShardCollection,
+    RefineCollectionShardKey,
+    ReshardCollection,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -203,6 +220,13 @@ impl<'a> From<&'a OperationType> for OperationTypeWrapper<'a> {
             OperationType::Rename => Self::Known(OperationTypeHelper::Rename),
             OperationType::DropDatabase => Self::Known(OperationTypeHelper::DropDatabase),
             OperationType::Invalidate => Self::Known(OperationTypeHelper::Invalidate),
+            OperationType::CreateIndexes => Self::Known(OperationTypeHelper::CreateIndexes),
+            OperationType::DropIndexes => Self::Known(OperationTypeHelper::DropIndexes),
+            OperationType::Modify => Self::Known(OperationTypeHelper::Modify),
+            OperationType::Create => Self::Known(OperationTypeHelper::Create),
+            OperationType::ShardCollection => Self::Known(OperationTypeHelper::ShardCollection),
+            OperationType::RefineCollectionShardKey => Self::Known(OperationTypeHelper::RefineCollectionShardKey),
+            OperationType::ReshardCollection => Self::Known(OperationTypeHelper::ReshardCollection),
             OperationType::Other(s) => Self::Unknown(s),
         }
     }
@@ -220,6 +244,13 @@ impl<'a> From<OperationTypeWrapper<'a>> for OperationType {
                 OperationTypeHelper::Rename => Self::Rename,
                 OperationTypeHelper::DropDatabase => Self::DropDatabase,
                 OperationTypeHelper::Invalidate => Self::Invalidate,
+                OperationTypeHelper::CreateIndexes => Self::CreateIndexes,
+                OperationTypeHelper::DropIndexes => Self::DropIndexes,
+                OperationTypeHelper::Modify => Self::Modify,
+                OperationTypeHelper::Create => Self::Create,
+                OperationTypeHelper::ShardCollection => Self::ShardCollection,
+                OperationTypeHelper::RefineCollectionShardKey => Self::RefineCollectionShardKey,
+                OperationTypeHelper::ReshardCollection => Self::ReshardCollection,    
             },
             OperationTypeWrapper::Unknown(s) => Self::Other(s.to_string()),
         }
