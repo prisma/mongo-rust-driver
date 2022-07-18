@@ -498,6 +498,23 @@ impl CursorState {
             }
         }
     }
+
+    pub(crate) fn advance(&mut self) -> Advance {
+        self.buffer.advance();
+        if !self.buffer.is_empty() {
+            return Advance::HasValue;
+        }
+        if self.exhausted {
+            return Advance::Exhausted;
+        }
+        Advance::NeedGetMore
+    }
+}
+
+pub(crate) enum Advance {
+    HasValue,
+    Exhausted,
+    NeedGetMore,
 }
 
 #[derive(Debug, Clone)]

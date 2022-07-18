@@ -6,7 +6,7 @@ use serde::{Deserialize, de::DeserializeOwned};
 
 use crate::{error::{Result}, Client, operation::GetMore};
 
-use super::{common::{CursorState}, CursorInformation};
+use super::{common::{CursorState, Advance}, CursorInformation};
 
 /// Skunkworks cursor re-impl
 #[derive(Debug)]
@@ -32,21 +32,16 @@ impl<T> Cursor<T> {
     /// calling [`Cursor::advance`] first or after [`Cursor::advance`] returns an error / false.
     pub async fn advance(&mut self) -> Result<bool> {
         loop {
-            self.state.buffer.advance();
-            if !self.state.buffer.is_empty() {
-                break;
-            }
-            // if moving the offset puts us at the end of the buffer, perform another
-            // getMore if the cursor is still alive.
-            if self.state.exhausted {
-                return Ok(false);
+            match self.state.advance() {
+                Advance::HasValue => return Ok(true),
+                Advance::Exhausted => return Ok(false),
+                Advance::NeedGetMore => (),
             }
 
             let get_more = GetMore::new(self.info.clone(), self.state.pinned_connection.handle());
             let result = self.client.execute_operation(get_more, None).await;
             self.state.handle_result(result)?;
         }
-        todo!()
     }
 
     /// Returns a reference to the current result in the cursor.
@@ -55,11 +50,16 @@ impl<T> Cursor<T> {
     }
 
     /// Update the type streamed values will be parsed as.
-    pub fn with_type<'a, D>(mut self) -> Cursor<D>
+    pub fn with_type<'a, D>(self) -> Cursor<D>
     where
         D: Deserialize<'a>,
     {
-        todo!()
+        Cursor {
+            client: self.client,
+            info: self.info,
+            state: self.state,
+            _phantom: Default::default(),
+        }
     }    
 }
 
