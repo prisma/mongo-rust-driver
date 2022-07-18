@@ -123,7 +123,7 @@ where
             let pin = self.state().pinned_connection.replicate();
 
             let result = self.provider.execute(spec, client, pin).await;
-            self.handle_get_more_result(result)?;
+            self.state_mut().handle_result(result)?;
         }
 
         Ok(true)
@@ -155,38 +155,6 @@ where
 
     pub(super) fn post_batch_resume_token(&self) -> Option<&ResumeToken> {
         self.state().post_batch_resume_token.as_ref()
-    }
-
-    fn mark_exhausted(&mut self) {
-        self.state_mut().exhausted = true;
-        self.state_mut().pinned_connection = PinnedConnection::Unpinned;
-    }
-
-    fn handle_get_more_result(&mut self, get_more_result: Result<GetMoreResult>) -> Result<()> {
-        match get_more_result {
-            Ok(get_more) => {
-                if get_more.exhausted {
-                    self.mark_exhausted();
-                }
-                self.state_mut().buffer = CursorBuffer::new(get_more.batch);
-                self.state_mut().post_batch_resume_token = get_more.post_batch_resume_token;
-
-                Ok(())
-            }
-            Err(e) => {
-                if matches!(*e.kind, ErrorKind::Command(ref e) if e.code == 43 || e.code == 237) {
-                    self.mark_exhausted();
-                }
-
-                if e.is_network_error() {
-                    // Flag the connection as invalid, preventing a killCursors command,
-                    // but leave the connection pinned.
-                    self.state_mut().pinned_connection.invalidate();
-                }
-
-                Err(e)
-            }
-        }
     }
 
     pub(super) fn provider_mut(&mut self) -> &mut P {
@@ -229,7 +197,7 @@ where
                 // If a result is ready, retrieve the buffer and update the exhausted status.
                 Poll::Ready(get_more_result) => {
                     let (result, session) = get_more_result.into_parts();
-                    let output = self.handle_get_more_result(result);
+                    let output = self.state_mut().handle_result(result);
                     self.provider
                         .clear_execution(session, self.state().exhausted);
                     output?;
@@ -496,6 +464,40 @@ pub(crate) struct CursorState {
     pub(crate) exhausted: bool,
     pub(crate) post_batch_resume_token: Option<ResumeToken>,
     pub(crate) pinned_connection: PinnedConnection,
+}
+
+impl CursorState {
+    fn mark_exhausted(&mut self) {
+        self.exhausted = true;
+        self.pinned_connection = PinnedConnection::Unpinned;
+    }
+
+    pub(crate) fn handle_result(&mut self, result: Result<GetMoreResult>) -> Result<()> {
+        match result {
+            Ok(get_more) => {
+                if get_more.exhausted {
+                    self.mark_exhausted();
+                }
+                self.buffer = CursorBuffer::new(get_more.batch);
+                self.post_batch_resume_token = get_more.post_batch_resume_token;
+
+                Ok(())
+            }
+            Err(e) => {
+                if matches!(*e.kind, ErrorKind::Command(ref e) if e.code == 43 || e.code == 237) {
+                    self.mark_exhausted();
+                }
+
+                if e.is_network_error() {
+                    // Flag the connection as invalid, preventing a killCursors command,
+                    // but leave the connection pinned.
+                    self.pinned_connection.invalidate();
+                }
+
+                Err(e)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

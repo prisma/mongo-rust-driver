@@ -1,5 +1,6 @@
 mod common;
 pub(crate) mod session;
+/// skunkworks
 pub mod skunk;
 
 #[cfg(test)]

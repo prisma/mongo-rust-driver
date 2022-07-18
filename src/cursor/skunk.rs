@@ -4,9 +4,9 @@ use bson::RawDocument;
 use futures_core::Stream;
 use serde::{Deserialize, de::DeserializeOwned};
 
-use crate::{error::{Result, ErrorKind}, Client, operation::GetMore};
+use crate::{error::{Result}, Client, operation::GetMore};
 
-use super::{common::{CursorState, CursorBuffer}, CursorInformation, PinnedConnection};
+use super::{common::{CursorState}, CursorInformation};
 
 /// Skunkworks cursor re-impl
 #[derive(Debug)]
@@ -42,41 +42,11 @@ impl<T> Cursor<T> {
                 return Ok(false);
             }
 
-            let client = self.client.clone();
-            let spec = self.info.clone();
-            let get_more = GetMore::new(spec, self.state.pinned_connection.handle());
-            let result = client.execute_operation(get_more, None).await;
-            match result {
-                Ok(get_more) => {
-                    if get_more.exhausted {
-                        self.mark_exhausted();
-                    }
-                    self.state.buffer = CursorBuffer::new(get_more.batch);
-                    self.state.post_batch_resume_token = get_more.post_batch_resume_token;
-    
-                    Ok(())
-                }
-                Err(e) => {
-                    if matches!(*e.kind, ErrorKind::Command(ref e) if e.code == 43 || e.code == 237) {
-                        self.mark_exhausted();
-                    }
-    
-                    if e.is_network_error() {
-                        // Flag the connection as invalid, preventing a killCursors command,
-                        // but leave the connection pinned.
-                        self.state.pinned_connection.invalidate();
-                    }
-    
-                    Err(e)    
-                }
-            }?;
+            let get_more = GetMore::new(self.info.clone(), self.state.pinned_connection.handle());
+            let result = self.client.execute_operation(get_more, None).await;
+            self.state.handle_result(result)?;
         }
         todo!()
-    }
-
-    fn mark_exhausted(&mut self) {
-        self.state.exhausted = true;
-        self.state.pinned_connection = PinnedConnection::Unpinned;
     }
 
     /// Returns a reference to the current result in the cursor.
