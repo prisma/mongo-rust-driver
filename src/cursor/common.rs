@@ -53,17 +53,12 @@ where
         pinned_connection: PinnedConnection,
         get_more_provider: P,
     ) -> Self {
-        let exhausted = spec.id() == 0;
+        let (state, info) = CursorState::new(spec, pinned_connection);
         Self {
             client,
             provider: get_more_provider,
-            info: spec.info,
-            state: Some(CursorState {
-                buffer: CursorBuffer::new(spec.initial_buffer),
-                exhausted,
-                post_batch_resume_token: None,
-                pinned_connection,
-            }),
+            info,
+            state: Some(state),
             _phantom: Default::default(),
         }
     }
@@ -460,13 +455,28 @@ pub(super) fn kill_cursor(
 
 #[derive(Debug)]
 pub(crate) struct CursorState {
-    pub(crate) buffer: CursorBuffer,
+    buffer: CursorBuffer,
     pub(crate) exhausted: bool,
     pub(crate) post_batch_resume_token: Option<ResumeToken>,
     pub(crate) pinned_connection: PinnedConnection,
 }
 
 impl CursorState {
+    pub(crate) fn new(spec: CursorSpecification, pinned_connection: PinnedConnection) -> (Self, CursorInformation) {
+        let exhausted = spec.id() == 0;
+        let st = Self {
+            buffer: CursorBuffer::new(spec.initial_buffer),
+            exhausted,
+            post_batch_resume_token: None,
+            pinned_connection,
+        };
+        (st, spec.info)
+    }
+
+    pub(crate) fn buffer(&self) -> &CursorBuffer {
+        &self.buffer
+    }
+
     fn mark_exhausted(&mut self) {
         self.exhausted = true;
         self.pinned_connection = PinnedConnection::Unpinned;

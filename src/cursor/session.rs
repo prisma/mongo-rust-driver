@@ -82,22 +82,16 @@ impl<T> SessionCursor<T> {
         spec: CursorSpecification,
         pinned: Option<PinnedConnectionHandle>,
     ) -> Self {
-        let exhausted = spec.info.id == 0;
+        let (state, info) = CursorState::new(spec, PinnedConnection::new(pinned));
 
         Self {
             client,
-            info: spec.info,
+            info,
             drop_address: None,
             _phantom: Default::default(),
             #[cfg(test)]
             kill_watcher: None,
-            state: CursorState {
-                buffer: CursorBuffer::new(spec.initial_buffer),
-                exhausted,
-                post_batch_resume_token: None,
-                pinned_connection: PinnedConnection::new(pinned),
-            }
-            .into(),
+            state: Some(state),
         }
     }
 }
@@ -259,7 +253,7 @@ impl<T> SessionCursor<T> {
     /// # }
     /// ```
     pub fn current(&self) -> &RawDocument {
-        self.state.as_ref().unwrap().buffer.current().unwrap()
+        self.state.as_ref().unwrap().buffer().current().unwrap()
     }
 
     /// Deserialize the current result to the generic type associated with this cursor.

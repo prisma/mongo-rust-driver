@@ -6,9 +6,9 @@ use futures_core::future::BoxFuture;
 use futures_core::Stream;
 use serde::{Deserialize, de::DeserializeOwned};
 
-use crate::{error::{Result, Error}, Client, operation::GetMore};
+use crate::{error::{Result, Error}, Client, operation::GetMore, change_stream::event::ResumeToken, ClientSession, cmap::conn::PinnedConnectionHandle};
 
-use super::{common::{CursorState, Advance}, CursorInformation};
+use super::{common::{CursorState, Advance, CursorBuffer}, CursorInformation, CursorSpecification, PinnedConnection};
 
 /// Skunkworks cursor re-impl
 pub struct InnerCursor {
@@ -46,7 +46,7 @@ impl InnerCursor {
 
     /// Returns a reference to the current result in the cursor.
     fn current(&self) -> &RawDocument {
-        self.state.buffer.current().unwrap()
+        self.state.buffer().current().unwrap()
     }
 
     fn deserialize_current<'a, T>(&'a self) -> Result<T>
@@ -69,6 +69,27 @@ pub struct Cursor<T> {
 }
 
 impl<T> Cursor<T> {
+    pub(crate) fn new(
+        client: Client,
+        spec: CursorSpecification,
+        session: Option<ClientSession>,
+        pin: Option<PinnedConnectionHandle>,
+    ) -> Self {
+        let (state, info) = CursorState::new(spec, PinnedConnection::new(pin));
+        Self {
+            mode: CursorMode::Manual(InnerCursor {
+                client,
+                info,
+                state,
+            }),
+            _phantom: Default::default(),
+        }
+    }
+
+    pub(crate) fn post_batch_resume_token(&self) -> Option<&ResumeToken> {
+        self.inner().unwrap().state.post_batch_resume_token.as_ref()
+    }
+
     fn inner(&self) -> Result<&InnerCursor> {
         match &self.mode {
             CursorMode::Manual(inner) => Ok(inner),
