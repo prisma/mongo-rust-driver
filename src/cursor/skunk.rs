@@ -6,20 +6,18 @@ use futures_core::future::BoxFuture;
 use futures_core::Stream;
 use serde::{Deserialize, de::DeserializeOwned};
 
-use crate::{error::{Result, Error}, Client, operation::GetMore, results::GetMoreResult};
+use crate::{error::{Result, Error}, Client, operation::GetMore};
 
 use super::{common::{CursorState, Advance}, CursorInformation};
 
 /// Skunkworks cursor re-impl
-pub struct Cursor<T> {
+pub struct InnerCursor {
     client: Client,
     info: CursorInformation,
     state: CursorState,
-    pending_get_more: Option<BoxFuture<'static, Result<GetMoreResult>>>,
-    _phantom: PhantomData<T>,
 }
 
-impl<T> Cursor<T> {
+impl InnerCursor {
     /// Move the cursor forward, potentially triggering requests to the database for more results
     /// if the local buffer has been exhausted.
     ///
@@ -32,10 +30,7 @@ impl<T> Cursor<T> {
     /// Note: [`Cursor::current`] and [`Cursor::deserialize_current`] must only be called after
     /// [`Cursor::advance`] returned `Ok(true)`. It is an error to call either of them without
     /// calling [`Cursor::advance`] first or after [`Cursor::advance`] returns an error / false.
-    pub async fn advance(&mut self) -> Result<bool> {
-        if self.pending_get_more.is_some() {
-            panic!("no u");
-        }
+    async fn advance(&mut self) -> Result<bool> {
         loop {
             match self.state.advance() {
                 Advance::HasValue => return Ok(true),
@@ -50,31 +45,39 @@ impl<T> Cursor<T> {
     }
 
     /// Returns a reference to the current result in the cursor.
-    pub fn current(&self) -> &RawDocument {
+    fn current(&self) -> &RawDocument {
         self.state.buffer.current().unwrap()
     }
 
-    /// Deserialize the current result to the generic type associated with this cursor.
-    pub fn deserialize_current<'a>(&'a self) -> Result<T>
+    fn deserialize_current<'a, T>(&'a self) -> Result<T>
     where
         T: Deserialize<'a>,
     {
         bson::from_slice(self.current().as_bytes()).map_err(Error::from)
-    }
-
-    /// Update the type streamed values will be parsed as.
-    pub fn with_type<'a, D>(self) -> Cursor<D>
-    where
-        D: Deserialize<'a>,
-    {
-        Cursor {
-            client: self.client,
-            info: self.info,
-            state: self.state,
-            pending_get_more: self.pending_get_more,
-            _phantom: Default::default(),
-        }
     }    
+}
+
+enum CursorMode {
+    Manual(InnerCursor),
+    Streaming(BoxFuture<'static, (InnerCursor, Result<bool>)>),
+}
+
+/// skunkworks cursor re-impl
+pub struct Cursor<T> {
+    mode: CursorMode,
+    _phantom: PhantomData<fn() -> T>,
+}
+
+impl<T> Cursor<T> {
+    fn inner(&self) -> Result<&InnerCursor> {
+        match &self.mode {
+            CursorMode::Manual(inner) => Ok(inner),
+            _ => Err(Error::internal(
+                "streaming the cursor was cancelled while a request was in progress and must \
+                 be continued before iterating manually",
+            ))
+        }
+    }
 }
 
 impl<T> Stream for Cursor<T>
@@ -86,38 +89,38 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = Pin::into_inner(self);
         loop {
-            match this.pending_get_more.take() {
-                None => {
-                    match this.state.advance() {
-                        Advance::HasValue => return Poll::Ready(Some(this.deserialize_current())),
-                        Advance::Exhausted => return Poll::Ready(None),
-                        Advance::NeedGetMore => {
-                            let client = this.client.clone();
-                            let info = this.info.clone();
-                            let pinned_conn = this.state.pinned_connection.replicate();
-                            this.pending_get_more = Some(Box::pin(async move {
-                                let get_more = GetMore::new(info, pinned_conn.handle());
-                                client.execute_operation(get_more, None).await
-                            }));
-                            continue;
-                        }
+            let mut out = None;
+            take_mut::take(&mut this.mode, |mode| {
+                match mode {
+                    CursorMode::Manual(mut inner) => {
+                        CursorMode::Streaming(Box::pin(async move {
+                            let result = inner.advance().await;
+                            (inner, result)
+                        }))
                     }
-                }
-                Some(mut f) => {
-                    match f.poll_unpin(cx) {
-                        Poll::Pending => {
-                            this.pending_get_more = Some(f);
-                            return Poll::Pending;
-                        }
-                        Poll::Ready(result) => {
-                            if let Err(e) = this.state.handle_result(result) {
-                                return Poll::Ready(Some(Err(e)));
+                    CursorMode::Streaming(mut fut) => {
+                        match fut.poll_unpin(cx) {
+                            Poll::Pending => {
+                                out = Some(Poll::Pending);
+                                CursorMode::Streaming(fut)
                             }
-                            continue;
-                        },
+                            Poll::Ready((inner, result)) => {
+                                let r = match result {
+                                    Ok(true) => Some(inner.deserialize_current()),
+                                    Ok(false) => None,
+                                    Err(e) => Some(Err(e)),
+                                };
+                                out = Some(Poll::Ready(r));
+                                CursorMode::Manual(inner)
+                            }
+                        }
                     }
                 }
+            });
+            if let Some(r) = out {
+                return r;
             }
         }
     }
 }
+
