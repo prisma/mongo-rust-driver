@@ -14,7 +14,6 @@ use tokio::sync::oneshot;
 use super::{
     common::{
         kill_cursor,
-        CursorBuffer,
         CursorInformation,
         CursorState,
         GenericCursor,

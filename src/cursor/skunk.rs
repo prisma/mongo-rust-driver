@@ -5,6 +5,7 @@ use futures_util::FutureExt;
 use futures_core::future::BoxFuture;
 use futures_core::Stream;
 use serde::{Deserialize, de::DeserializeOwned};
+#[cfg(test)]
 use tokio::sync::oneshot;
 
 use crate::{error::{Result, Error}, Client, operation::GetMore, change_stream::event::ResumeToken, ClientSession, cmap::conn::PinnedConnectionHandle, client::options::ServerAddress};
@@ -12,7 +13,7 @@ use crate::{error::{Result, Error}, Client, operation::GetMore, change_stream::e
 use super::{common::{CursorState, Advance, kill_cursor}, CursorInformation, CursorSpecification, PinnedConnection};
 
 /// Skunkworks cursor re-impl
-pub struct InnerCursor {
+pub(crate) struct InnerCursor {
     client: Client,
     info: CursorInformation,
     state: CursorState,
@@ -32,7 +33,7 @@ impl InnerCursor {
             }
 
             let get_more = GetMore::new(self.info.clone(), self.state.pinned_connection.handle());
-            let result = self.client.execute_operation(get_more, None).await;
+            let result = self.client.execute_operation(get_more, self.session.as_mut()).await;
             self.state.handle_result(result)?;
         }
     }
@@ -43,7 +44,8 @@ impl InnerCursor {
 
     /// Extract the stored implicit session, if any.  The provider cannot be started again after
     /// this call.
-    fn take_implicit_session(&mut self) -> Option<ClientSession> {
+    #[allow(dead_code)]
+    pub(crate) fn take_implicit_session(&mut self) -> Option<ClientSession> {
         self.session.take()
     }
 
@@ -120,7 +122,7 @@ impl<T> Cursor<T> {
     /// # }
     /// ```
     pub fn current(&self) -> &RawDocument {
-        self.inner_mut().unwrap().current()
+        self.inner().unwrap().current()
     }
 
     /// Deserialize the current result to the generic type associated with this cursor.
@@ -191,17 +193,7 @@ impl<T> Cursor<T> {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn post_batch_resume_token(&self) -> Result<Option<&ResumeToken>> {
-        Ok(self.inner()?.state.post_batch_resume_token.as_ref())
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn take_implicit_session(&mut self) -> Result<Option<ClientSession>> {
-        Ok(self.inner_mut()?.take_implicit_session())
-    }
-
-    fn inner(&self) -> Result<&InnerCursor> {
+    pub(crate) fn inner(&self) -> Result<&InnerCursor> {
         match &self.mode {
             CursorMode::Manual(inner) => Ok(inner),
             _ => Err(Error::internal(
