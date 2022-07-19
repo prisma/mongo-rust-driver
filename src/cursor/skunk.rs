@@ -42,19 +42,44 @@ impl InnerCursor {
         self.state.buffer().current().unwrap()
     }
 
+    fn deserialize_current<'a, T>(&'a self) -> Result<T>
+    where
+        T: Deserialize<'a>,
+    {
+        bson::from_slice(self.current().as_bytes()).map_err(Error::from)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn is_exhausted(&self) -> bool {
+        self.state.exhausted
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn client(&self) -> &Client {
+        &self.client
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn address(&self) -> &ServerAddress {
+        &self.info.address
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn pinned_connection(&self) -> &PinnedConnection {
+        &self.state.pinned_connection
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn post_batch_resume_token(&self) -> Option<&ResumeToken> {
+        self.state.post_batch_resume_token.as_ref()
+    }
+
     /// Extract the stored implicit session, if any.  The provider cannot be started again after
     /// this call.
     #[allow(dead_code)]
     pub(crate) fn take_implicit_session(&mut self) -> Option<ClientSession> {
         self.session.take()
     }
-
-    fn deserialize_current<'a, T>(&'a self) -> Result<T>
-    where
-        T: Deserialize<'a>,
-    {
-        bson::from_slice(self.current().as_bytes()).map_err(Error::from)
-    }    
 }
 
 impl Drop for InnerCursor {
