@@ -5,31 +5,24 @@ use futures_util::FutureExt;
 use futures_core::future::BoxFuture;
 use futures_core::Stream;
 use serde::{Deserialize, de::DeserializeOwned};
+use tokio::sync::oneshot;
 
-use crate::{error::{Result, Error}, Client, operation::GetMore, change_stream::event::ResumeToken, ClientSession, cmap::conn::PinnedConnectionHandle};
+use crate::{error::{Result, Error}, Client, operation::GetMore, change_stream::event::ResumeToken, ClientSession, cmap::conn::PinnedConnectionHandle, client::options::ServerAddress};
 
-use super::{common::{CursorState, Advance, CursorBuffer}, CursorInformation, CursorSpecification, PinnedConnection};
+use super::{common::{CursorState, Advance, kill_cursor}, CursorInformation, CursorSpecification, PinnedConnection};
 
 /// Skunkworks cursor re-impl
 pub struct InnerCursor {
     client: Client,
     info: CursorInformation,
     state: CursorState,
+    session: Option<ClientSession>,
+    drop_address: Option<ServerAddress>,
+    #[cfg(test)]
+    kill_watcher: Option<oneshot::Sender<()>>,
 }
 
 impl InnerCursor {
-    /// Move the cursor forward, potentially triggering requests to the database for more results
-    /// if the local buffer has been exhausted.
-    ///
-    /// This will keep requesting data from the server until either the cursor is exhausted
-    /// or batch with results in it has been received.
-    ///
-    /// The return value indicates whether new results were successfully returned (true) or if
-    /// the cursor has been closed (false).
-    ///
-    /// Note: [`Cursor::current`] and [`Cursor::deserialize_current`] must only be called after
-    /// [`Cursor::advance`] returned `Ok(true)`. It is an error to call either of them without
-    /// calling [`Cursor::advance`] first or after [`Cursor::advance`] returns an error / false.
     async fn advance(&mut self) -> Result<bool> {
         loop {
             match self.state.advance() {
@@ -44,9 +37,14 @@ impl InnerCursor {
         }
     }
 
-    /// Returns a reference to the current result in the cursor.
     fn current(&self) -> &RawDocument {
         self.state.buffer().current().unwrap()
+    }
+
+    /// Extract the stored implicit session, if any.  The provider cannot be started again after
+    /// this call.
+    fn take_implicit_session(&mut self) -> Option<ClientSession> {
+        self.session.take()
     }
 
     fn deserialize_current<'a, T>(&'a self) -> Result<T>
@@ -55,6 +53,23 @@ impl InnerCursor {
     {
         bson::from_slice(self.current().as_bytes()).map_err(Error::from)
     }    
+}
+
+impl Drop for InnerCursor {
+    fn drop(&mut self) {
+        if self.state.exhausted {
+            return;
+        }
+        kill_cursor(
+            self.client.clone(),
+            &self.info.ns,
+            self.info.id,
+            self.state.pinned_connection.replicate(),
+            self.drop_address.take(),
+            #[cfg(test)]
+            self.kill_watcher.take(),
+        );
+    }
 }
 
 enum CursorMode {
@@ -69,6 +84,92 @@ pub struct Cursor<T> {
 }
 
 impl<T> Cursor<T> {
+    /// Move the cursor forward, potentially triggering requests to the database for more results
+    /// if the local buffer has been exhausted.
+    ///
+    /// This will keep requesting data from the server until either the cursor is exhausted
+    /// or batch with results in it has been received.
+    ///
+    /// The return value indicates whether new results were successfully returned (true) or if
+    /// the cursor has been closed (false).
+    ///
+    /// Note: [`Cursor::current`] and [`Cursor::deserialize_current`] must only be called after
+    /// [`Cursor::advance`] returned `Ok(true)`. It is an error to call either of them without
+    /// calling [`Cursor::advance`] first or after [`Cursor::advance`] returns an error / false.
+    pub async fn advance(&mut self) -> Result<bool> {
+        self.inner_mut()?.advance().await
+    }
+
+    /// Returns a reference to the current result in the cursor.
+    ///
+    /// # Panics
+    /// [`Cursor::advance`] must return `Ok(true)` before [`Cursor::current`] can be
+    /// invoked. Calling [`Cursor::current`] after [`Cursor::advance`] does not return true
+    /// or without calling [`Cursor::advance`] at all may result in a panic.
+    ///
+    /// ```
+    /// # use mongodb::{Client, bson::Document, error::Result};
+    /// # async fn foo() -> Result<()> {
+    /// # let client = Client::with_uri_str("mongodb://localhost:27017").await?;
+    /// # let coll = client.database("stuff").collection::<Document>("stuff");
+    /// let mut cursor = coll.find(None, None).await?;
+    /// while cursor.advance().await? {
+    ///     println!("{:?}", cursor.current());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn current(&self) -> &RawDocument {
+        self.inner_mut().unwrap().current()
+    }
+
+    /// Deserialize the current result to the generic type associated with this cursor.
+    ///
+    /// # Panics
+    /// [`Cursor::advance`] must return `Ok(true)` before [`Cursor::deserialize_current`] can be
+    /// invoked. Calling [`Cursor::deserialize_current`] after [`Cursor::advance`] does not return
+    /// true or without calling [`Cursor::advance`] at all may result in a panic.
+    ///
+    /// ```
+    /// # use mongodb::{Client, error::Result};
+    /// # async fn foo() -> Result<()> {
+    /// # let client = Client::with_uri_str("mongodb://localhost:27017").await?;
+    /// # let db = client.database("foo");
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Debug, Deserialize)]
+    /// struct Cat<'a> {
+    ///     #[serde(borrow)]
+    ///     name: &'a str
+    /// }
+    ///
+    /// let coll = db.collection::<Cat>("cat");
+    /// let mut cursor = coll.find(None, None).await?;
+    /// while cursor.advance().await? {
+    ///     println!("{:?}", cursor.deserialize_current()?);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn deserialize_current<'a>(&'a self) -> Result<T>
+    where
+        T: Deserialize<'a>,
+    {
+        self.inner()?.deserialize_current()
+    }
+
+    /// Update the type streamed values will be parsed as.
+    pub fn with_type<'a, D>(self) -> Cursor<D>
+    where
+        D: Deserialize<'a>,
+    {
+        Cursor {
+            mode: self.mode,
+            _phantom: Default::default(),
+        }
+    }
+
+    #[allow(dead_code)]
     pub(crate) fn new(
         client: Client,
         spec: CursorSpecification,
@@ -81,17 +182,37 @@ impl<T> Cursor<T> {
                 client,
                 info,
                 state,
+                session,
+                drop_address: None,
+                #[cfg(test)]
+                kill_watcher: None,    
             }),
             _phantom: Default::default(),
         }
     }
 
-    pub(crate) fn post_batch_resume_token(&self) -> Option<&ResumeToken> {
-        self.inner().unwrap().state.post_batch_resume_token.as_ref()
+    #[allow(dead_code)]
+    pub(crate) fn post_batch_resume_token(&self) -> Result<Option<&ResumeToken>> {
+        Ok(self.inner()?.state.post_batch_resume_token.as_ref())
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn take_implicit_session(&mut self) -> Result<Option<ClientSession>> {
+        Ok(self.inner_mut()?.take_implicit_session())
     }
 
     fn inner(&self) -> Result<&InnerCursor> {
         match &self.mode {
+            CursorMode::Manual(inner) => Ok(inner),
+            _ => Err(Error::internal(
+                "streaming the cursor was cancelled while a request was in progress and must \
+                 be continued before iterating manually",
+            ))
+        }
+    }
+
+    fn inner_mut(&mut self) -> Result<&mut InnerCursor> {
+        match &mut self.mode {
             CursorMode::Manual(inner) => Ok(inner),
             _ => Err(Error::internal(
                 "streaming the cursor was cancelled while a request was in progress and must \
