@@ -2,6 +2,7 @@ mod common;
 pub(crate) mod session;
 /// skunkworks
 pub mod skunk;
+pub mod skunk_session;
 
 #[cfg(test)]
 use std::collections::VecDeque;

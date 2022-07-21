@@ -344,7 +344,7 @@ extern crate derive_more;
 pub use crate::{
     client::{Client, session::ClientSession},
     coll::Collection,
-    cursor::{Cursor, session::{SessionCursor, SessionCursorStream}, skunk},
+    cursor::{Cursor, session::{SessionCursor, SessionCursorStream}, skunk, skunk_session},
     db::Database,
 };
 
