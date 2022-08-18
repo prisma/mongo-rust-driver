@@ -94,6 +94,8 @@ pub struct ChangeStreamOptions {
     #[builder(default)]
     #[serde(skip_serializing)]
     pub selection_criteria: Option<SelectionCriteria>,
+
+    pub show_expanded_events: Option<bool>,
 }
 
 impl ChangeStreamOptions {

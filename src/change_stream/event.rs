@@ -110,6 +110,8 @@ pub struct ChangeStreamEvent<T> {
     /// change stream. If `WhenAvailable` was specified but the pre-image is unavailable, this
     /// will be explicitly set to `None`.
     pub full_document_before_change: Option<T>,
+
+    pub disambiguated_paths: Option<Document>,
 }
 
 /// Describes which fields have been updated or removed from a document.
