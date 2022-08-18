@@ -65,7 +65,6 @@
           "name": "iterateUntilDocumentOrError",
           "object": "changeStream0",
           "expectResult": {
-            "operationType": "insert",
             "ns": {
               "db": "database0",
               "coll": "collection0"
