@@ -1,86 +1,38 @@
-#[cfg(feature = "in-use-encryption-unstable")]
-use bson::RawDocumentBuf;
-use bson::{doc, RawBsonRef, RawDocument, Timestamp};
-#[cfg(feature = "in-use-encryption-unstable")]
-use futures_core::future::BoxFuture;
-use once_cell::sync::Lazy;
-use serde::de::DeserializeOwned;
+use bson::{doc, RawBsonRef, RawDocument};
 
-use std::{
-    collections::HashSet,
-    sync::{atomic::Ordering, Arc},
-    time::Instant,
-};
+use std::{sync::atomic::Ordering, time::Instant};
 
 use super::{options::ServerAddress, session::TransactionState, Client, ClientSession};
 use crate::{
     bson::Document,
-    change_stream::{
-        event::ChangeStreamEvent,
-        session::SessionChangeStream,
-        ChangeStream,
-        ChangeStreamData,
-        WatchArgs,
-    },
     cmap::{
-        conn::{
-            wire::{next_request_id, Message},
-            PinnedConnectionHandle,
-        },
+        conn::wire::{next_request_id, Message},
         Connection,
         ConnectionPool,
         RawCommandResponse,
     },
     cursor::{session::SessionCursor, Cursor, CursorSpecification},
-    error::{
-        Error,
-        ErrorKind,
-        Result,
-        RETRYABLE_WRITE_ERROR,
-        TRANSIENT_TRANSACTION_ERROR,
-        UNKNOWN_TRANSACTION_COMMIT_RESULT,
-    },
+    error::{Error, ErrorKind, Result, RETRYABLE_WRITE_ERROR},
     event::command::{
         CommandEvent,
         CommandFailedEvent,
         CommandStartedEvent,
         CommandSucceededEvent,
     },
-    hello::LEGACY_HELLO_COMMAND_NAME_LOWERCASE,
     operation::{
-        aggregate::{change_stream::ChangeStreamAggregate, AggregateTarget},
         AbortTransaction,
         CommandErrorBody,
         CommitTransaction,
-        Operation,
+        Operation as OriginalFlavor,
         Retryability,
     },
-    options::{ChangeStreamOptions, SelectionCriteria},
-    sdam::{HandshakePhase, SelectedServer, ServerType, TopologyType, TransactionSupportStatus},
+    operation2::Operation,
+    options::SelectionCriteria,
+    sdam::{HandshakePhase, ServerType},
     selection_criteria::ReadPreference,
     tracking_arc::TrackingArc,
     ClusterTime,
 };
-
-pub(crate) static REDACTED_COMMANDS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    let mut hash_set = HashSet::new();
-    hash_set.insert("authenticate");
-    hash_set.insert("saslstart");
-    hash_set.insert("saslcontinue");
-    hash_set.insert("getnonce");
-    hash_set.insert("createuser");
-    hash_set.insert("updateuser");
-    hash_set.insert("copydbgetnonce");
-    hash_set.insert("copydbsaslstart");
-    hash_set.insert("copydb");
-    hash_set
-});
-pub(crate) static HELLO_COMMAND_NAMES: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    let mut hash_set = HashSet::new();
-    hash_set.insert("hello");
-    hash_set.insert(LEGACY_HELLO_COMMAND_NAME_LOWERCASE);
-    hash_set
-});
 
 impl Client {
     /// Execute the given operation.
@@ -88,17 +40,17 @@ impl Client {
     /// Server selection will performed using the criteria specified on the operation, if any, and
     /// an implicit session will be created if the operation and write concern are compatible with
     /// sessions and an explicit session is not provided.
-    pub(crate) async fn execute_operation<T: Operation>(
+    pub(crate) async fn execute_operation_2<T: Operation>(
         &self,
         op: T,
         session: impl Into<Option<&mut ClientSession>>,
     ) -> Result<T::O> {
-        self.execute_operation_with_details(op, session)
+        self.execute_operation_with_details_2(op, session)
             .await
             .map(|details| details.output)
     }
 
-    async fn execute_operation_with_details<T: Operation>(
+    async fn execute_operation_with_details_2<T: Operation>(
         &self,
         op: T,
         session: impl Into<Option<&mut ClientSession>>,
@@ -136,7 +88,7 @@ impl Client {
                     }
                 }
             }
-            self.execute_operation_with_retry(op, session).await
+            self.execute_operation_with_retry_2(op, session).await
         })
         .await
     }
@@ -144,12 +96,12 @@ impl Client {
     /// Execute the given operation, returning the cursor created by the operation.
     ///
     /// Server selection be will performed using the criteria specified on the operation, if any.
-    pub(crate) async fn execute_cursor_operation<Op, T>(&self, op: Op) -> Result<Cursor<T>>
+    pub(crate) async fn execute_cursor_operation_2<Op, T>(&self, op: Op) -> Result<Cursor<T>>
     where
         Op: Operation<O = CursorSpecification>,
     {
         Box::pin(async {
-            let mut details = self.execute_operation_with_details(op, None).await?;
+            let mut details = self.execute_operation_with_details_2(op, None).await?;
             let pinned =
                 self.pin_connection_for_cursor(&details.output, &mut details.connection)?;
             Ok(Cursor::new(
@@ -162,7 +114,7 @@ impl Client {
         .await
     }
 
-    pub(crate) async fn execute_session_cursor_operation<Op, T>(
+    pub(crate) async fn execute_session_cursor_operation_2<Op, T>(
         &self,
         op: Op,
         session: &mut ClientSession,
@@ -171,7 +123,7 @@ impl Client {
         Op: Operation<O = CursorSpecification>,
     {
         let mut details = self
-            .execute_operation_with_details(op, &mut *session)
+            .execute_operation_with_details_2(op, &mut *session)
             .await?;
 
         let pinned =
@@ -179,110 +131,10 @@ impl Client {
         Ok(SessionCursor::new(self.clone(), details.output, pinned))
     }
 
-    pub(super) fn is_load_balanced(&self) -> bool {
-        self.inner.options.load_balanced.unwrap_or(false)
-    }
-
-    pub(super) fn pin_connection_for_cursor(
-        &self,
-        spec: &CursorSpecification,
-        conn: &mut Connection,
-    ) -> Result<Option<PinnedConnectionHandle>> {
-        if self.is_load_balanced() && spec.info.id != 0 {
-            Ok(Some(conn.pin()?))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub(super) fn pin_connection_for_session(
-        &self,
-        spec: &CursorSpecification,
-        conn: &mut Connection,
-        session: &mut ClientSession,
-    ) -> Result<Option<PinnedConnectionHandle>> {
-        if let Some(handle) = session.transaction.pinned_connection() {
-            // Cursor operations on a transaction share the same pinned connection.
-            Ok(Some(handle.replicate()))
-        } else {
-            self.pin_connection_for_cursor(spec, conn)
-        }
-    }
-
-    pub(crate) async fn execute_watch<T>(
-        &self,
-        pipeline: impl IntoIterator<Item = Document>,
-        options: Option<ChangeStreamOptions>,
-        target: AggregateTarget,
-        mut resume_data: Option<ChangeStreamData>,
-    ) -> Result<ChangeStream<ChangeStreamEvent<T>>>
-    where
-        T: DeserializeOwned + Unpin + Send + Sync,
-    {
-        Box::pin(async {
-            let pipeline: Vec<_> = pipeline.into_iter().collect();
-            let args = WatchArgs {
-                pipeline,
-                target,
-                options,
-            };
-            let mut implicit_session = resume_data
-                .as_mut()
-                .and_then(|rd| rd.implicit_session.take());
-            let op = ChangeStreamAggregate::new(&args, resume_data)?;
-
-            let mut details = self
-                .execute_operation_with_details(op, implicit_session.as_mut())
-                .await?;
-            if let Some(session) = implicit_session {
-                details.implicit_session = Some(session);
-            }
-            let (cursor_spec, cs_data) = details.output;
-            let pinned = self.pin_connection_for_cursor(&cursor_spec, &mut details.connection)?;
-            let cursor = Cursor::new(self.clone(), cursor_spec, details.implicit_session, pinned);
-
-            Ok(ChangeStream::new(cursor, args, cs_data))
-        })
-        .await
-    }
-
-    pub(crate) async fn execute_watch_with_session<T>(
-        &self,
-        pipeline: impl IntoIterator<Item = Document>,
-        options: Option<ChangeStreamOptions>,
-        target: AggregateTarget,
-        resume_data: Option<ChangeStreamData>,
-        session: &mut ClientSession,
-    ) -> Result<SessionChangeStream<ChangeStreamEvent<T>>>
-    where
-        T: DeserializeOwned + Unpin + Send + Sync,
-    {
-        Box::pin(async {
-            let pipeline: Vec<_> = pipeline.into_iter().collect();
-            let args = WatchArgs {
-                pipeline,
-                target,
-                options,
-            };
-            let op = ChangeStreamAggregate::new(&args, resume_data)?;
-
-            let mut details = self
-                .execute_operation_with_details(op, &mut *session)
-                .await?;
-            let (cursor_spec, cs_data) = details.output;
-            let pinned =
-                self.pin_connection_for_session(&cursor_spec, &mut details.connection, session)?;
-            let cursor = SessionCursor::new(self.clone(), cursor_spec, pinned);
-
-            Ok(SessionChangeStream::new(cursor, args, cs_data))
-        })
-        .await
-    }
-
     /// Selects a server and executes the given operation on it, optionally using a provided
     /// session. Retries the operation upon failure if retryability is supported or after
     /// reauthenticating if reauthentication is required.
-    async fn execute_operation_with_retry<T: Operation>(
+    async fn execute_operation_with_retry_2<T: Operation>(
         &self,
         mut op: T,
         mut session: Option<&mut ClientSession>,
@@ -341,7 +193,7 @@ impl Client {
                         err.add_label(RETRYABLE_WRITE_ERROR);
                     }
 
-                    let op_retry = match self.get_op_retryability(&op, &session) {
+                    let op_retry = match self.get_op_retryability_2(&op, &session) {
                         Retryability::Read => err.is_read_retryable(),
                         Retryability::Write => err.is_write_retryable(),
                         _ => false,
@@ -372,7 +224,7 @@ impl Client {
                 session = implicit_session.as_mut();
             }
 
-            let retryability = self.get_retryability(&conn, &op, &session)?;
+            let retryability = self.get_retryability_2(&conn, &op, &session)?;
             if retryability == Retryability::None {
                 retry.first_error()?;
             }
@@ -383,7 +235,7 @@ impl Client {
                 .or_else(|| get_txn_number(&mut session, retryability));
 
             let details = match self
-                .execute_operation_on_connection(
+                .execute_operation_on_connection_2(
                     &mut op,
                     &mut conn,
                     &mut session,
@@ -479,7 +331,7 @@ impl Client {
     }
 
     /// Executes an operation on a given connection, optionally using a provided session.
-    async fn execute_operation_on_connection<T: Operation>(
+    async fn execute_operation_on_connection_2<T: Operation>(
         &self,
         op: &mut T,
         connection: &mut Connection,
@@ -493,7 +345,7 @@ impl Client {
 
         let stream_description = connection.stream_description()?;
         let is_sharded = stream_description.initial_server_type == ServerType::Mongos;
-        let mut cmd = op.build(stream_description)?;
+        let mut cmd = Operation::build(op, stream_description)?;
         self.inner.topology.update_command_with_read_pref(
             connection.address(),
             &mut cmd,
@@ -800,67 +652,8 @@ impl Client {
         }
     }
 
-    #[cfg(feature = "in-use-encryption-unstable")]
-    pub(super) fn auto_encrypt<'a>(
-        &'a self,
-        csfle: &'a super::csfle::ClientState,
-        command: &'a RawDocument,
-        target_db: &'a str,
-    ) -> BoxFuture<'a, Result<RawDocumentBuf>> {
-        Box::pin(async move {
-            let ctx = csfle
-                .crypt()
-                .ctx_builder()
-                .build_encrypt(target_db, command)?;
-            csfle.exec().run_ctx(ctx, Some(target_db)).await
-        })
-    }
-
-    #[cfg(feature = "in-use-encryption-unstable")]
-    pub(super) fn auto_decrypt<'a>(
-        &'a self,
-        csfle: &'a super::csfle::ClientState,
-        response: &'a RawDocument,
-    ) -> BoxFuture<'a, Result<RawDocumentBuf>> {
-        Box::pin(async move {
-            let ctx = csfle.crypt().ctx_builder().build_decrypt(response)?;
-            csfle.exec().run_ctx(ctx, None).await
-        })
-    }
-
-    async fn select_data_bearing_server(&self, operation_name: &str) -> Result<()> {
-        let topology_type = self.inner.topology.topology_type();
-        let criteria = SelectionCriteria::Predicate(Arc::new(move |server_info| {
-            let server_type = server_info.server_type();
-            (matches!(topology_type, TopologyType::Single) && server_type.is_available())
-                || server_type.is_data_bearing()
-        }));
-        let _: SelectedServer = self
-            .select_server(Some(&criteria), operation_name, None)
-            .await?;
-        Ok(())
-    }
-
-    /// Gets whether the topology supports transactions. If it has yet to be determined if the
-    /// topology supports transactions, this method will perform a server selection that will force
-    /// that determination to be made.
-    pub(crate) async fn transaction_support_status(&self) -> Result<TransactionSupportStatus> {
-        let initial_status = self.inner.topology.transaction_support_status();
-
-        // Need to guarantee that we're connected to at least one server that can determine if
-        // sessions are supported or not.
-        match initial_status {
-            TransactionSupportStatus::Undetermined => {
-                self.select_data_bearing_server("Check transactions support status")
-                    .await?;
-                Ok(self.inner.topology.transaction_support_status())
-            }
-            _ => Ok(initial_status),
-        }
-    }
-
     /// Returns the retryability level for the execution of this operation.
-    fn get_op_retryability<T: Operation>(
+    fn get_op_retryability_2<T: Operation>(
         &self,
         op: &T,
         session: &Option<&mut ClientSession>,
@@ -890,41 +683,18 @@ impl Client {
     }
 
     /// Returns the retryability level for the execution of this operation on this connection.
-    fn get_retryability<T: Operation>(
+    fn get_retryability_2<T: Operation>(
         &self,
         conn: &Connection,
         op: &T,
         session: &Option<&mut ClientSession>,
     ) -> Result<Retryability> {
-        match self.get_op_retryability(op, session) {
+        match self.get_op_retryability_2(op, session) {
             Retryability::Read => Ok(Retryability::Read),
             Retryability::Write if conn.stream_description()?.supports_retryable_writes() => {
                 Ok(Retryability::Write)
             }
             _ => Ok(Retryability::None),
-        }
-    }
-
-    pub(super) async fn update_cluster_time(
-        &self,
-        cluster_time: Option<ClusterTime>,
-        at_cluster_time: Option<Timestamp>,
-        session: &mut Option<&mut ClientSession>,
-    ) {
-        if let Some(ref cluster_time) = cluster_time {
-            self.inner
-                .topology
-                .advance_cluster_time(cluster_time.clone())
-                .await;
-            if let Some(ref mut session) = session {
-                session.advance_cluster_time(cluster_time)
-            }
-        }
-
-        if let Some(timestamp) = at_cluster_time {
-            if let Some(ref mut session) = session {
-                session.snapshot_time = Some(timestamp);
-            }
         }
     }
 }
@@ -964,85 +734,6 @@ fn get_txn_number(
             }
         }
         None => None,
-    }
-}
-
-impl Error {
-    /// Adds the necessary labels to this Error, and unpins the session if needed.
-    ///
-    /// A TransientTransactionError label should be added if a transaction is in progress and the
-    /// error is a network or server selection error.
-    ///
-    /// On a pre-4.4 connection, a RetryableWriteError label should be added to any write-retryable
-    /// error. On a 4.4+ connection, a label should only be added to network errors. Regardless of
-    /// server version, a label should only be added if the `retry_writes` client option is not set
-    /// to `false`, the operation during which the error occured is write-retryable, and a
-    /// TransientTransactionError label has not already been added.
-    ///
-    /// If the TransientTransactionError or UnknownTransactionCommitResult labels are added, the
-    /// ClientSession should be unpinned.
-    pub(super) fn add_labels_and_update_pin(
-        &mut self,
-        conn: Option<&Connection>,
-        session: &mut Option<&mut ClientSession>,
-        retryability: Option<Retryability>,
-    ) -> Result<()> {
-        let transaction_state = session.as_ref().map_or(&TransactionState::None, |session| {
-            &session.transaction.state
-        });
-        let max_wire_version = if let Some(conn) = conn {
-            conn.stream_description()?.max_wire_version
-        } else {
-            None
-        };
-
-        let server_type = match conn {
-            Some(c) => Some(c.stream_description()?.initial_server_type),
-            None => None,
-        };
-        match transaction_state {
-            TransactionState::Starting | TransactionState::InProgress => {
-                if self.is_network_error() || self.is_server_selection_error() {
-                    self.add_label(TRANSIENT_TRANSACTION_ERROR);
-                }
-            }
-            TransactionState::Committed { .. } => {
-                if let Some(max_wire_version) = max_wire_version {
-                    if self.should_add_retryable_write_label(max_wire_version, server_type) {
-                        self.add_label(RETRYABLE_WRITE_ERROR);
-                    }
-                }
-                if self.should_add_unknown_transaction_commit_result_label() {
-                    self.add_label(UNKNOWN_TRANSACTION_COMMIT_RESULT);
-                }
-            }
-            TransactionState::Aborted => {
-                if let Some(max_wire_version) = max_wire_version {
-                    if self.should_add_retryable_write_label(max_wire_version, server_type) {
-                        self.add_label(RETRYABLE_WRITE_ERROR);
-                    }
-                }
-            }
-            TransactionState::None => {
-                if retryability == Some(Retryability::Write) {
-                    if let Some(max_wire_version) = max_wire_version {
-                        if self.should_add_retryable_write_label(max_wire_version, server_type) {
-                            self.add_label(RETRYABLE_WRITE_ERROR);
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some(ref mut session) = session {
-            if self.contains_label(TRANSIENT_TRANSACTION_ERROR)
-                || self.contains_label(UNKNOWN_TRANSACTION_COMMIT_RESULT)
-            {
-                session.unpin();
-            }
-        }
-
-        Ok(())
     }
 }
 

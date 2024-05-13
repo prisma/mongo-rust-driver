@@ -3,6 +3,7 @@ pub mod auth;
 #[cfg(feature = "in-use-encryption-unstable")]
 pub(crate) mod csfle;
 mod executor;
+mod executor2;
 pub mod options;
 pub mod session;
 

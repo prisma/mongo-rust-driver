@@ -1,3 +1,5 @@
+use bson::{rawdoc, RawDocumentBuf};
+
 use crate::{
     bson::{doc, Document},
     cmap::{Command, RawCommandResponse, StreamDescription},
@@ -10,9 +12,12 @@ use crate::{
         Retryability,
         SERVER_4_4_0_WIRE_VERSION,
     },
+    operation2,
     options::{CursorType, FindOptions, SelectionCriteria},
     Namespace,
 };
+
+use super::append_options_to_raw_document;
 
 #[derive(Debug)]
 pub(crate) struct Find {
@@ -28,6 +33,54 @@ impl Find {
             filter,
             options: options.map(Box::new),
         }
+    }
+}
+
+impl operation2::Operation for Find {
+    fn build(&mut self, _description: &StreamDescription) -> Result<Command<RawDocumentBuf>> {
+        let mut body = rawdoc! {
+            Self::NAME: self.ns.coll.clone(),
+        };
+
+        if let Some(ref options) = self.options {
+            // negative limits should be interpreted as request for single batch as per crud spec.
+            if options.limit.map(|limit| limit < 0) == Some(true) {
+                body.append("singleBatch", true);
+            }
+
+            if options
+                .batch_size
+                .map(|batch_size| batch_size > std::i32::MAX as u32)
+                == Some(true)
+            {
+                return Err(ErrorKind::InvalidArgument {
+                    message: "The batch size must fit into a signed 32-bit integer".to_string(),
+                }
+                .into());
+            }
+
+            match options.cursor_type {
+                Some(CursorType::Tailable) => {
+                    body.append("tailable", true);
+                }
+                Some(CursorType::TailableAwait) => {
+                    body.append("tailable", true);
+                    body.append("awaitData", true);
+                }
+                _ => {}
+            };
+        }
+
+        append_options_to_raw_document(&mut body, self.options.as_ref())?;
+
+        body.append("filter", RawDocumentBuf::try_from(&self.filter)?);
+
+        Ok(Command::new_read(
+            Self::NAME.to_string(),
+            self.ns.db.clone(),
+            self.options.as_ref().and_then(|o| o.read_concern.clone()),
+            body,
+        ))
     }
 }
 

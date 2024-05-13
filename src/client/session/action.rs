@@ -317,7 +317,7 @@ impl<'a> Action for CommitTransaction<'a> {
                 self.session
                     .client
                     .clone()
-                    .execute_operation(commit_transaction, self.session)
+                    .execute_operation_2(commit_transaction, self.session)
                     .await
             }
             TransactionState::Committed {

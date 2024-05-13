@@ -1,11 +1,18 @@
 use std::time::Duration;
 
-use bson::{doc, Document};
+use bson::{doc, rawdoc, Document, RawDocumentBuf};
 
 use crate::{
     cmap::{Command, RawCommandResponse, StreamDescription},
     error::Result,
-    operation::{append_options, remove_empty_write_concern, OperationWithDefaults, Retryability},
+    operation::{
+        append_options,
+        append_options_to_raw_document,
+        remove_empty_write_concern,
+        OperationWithDefaults,
+        Retryability,
+    },
+    operation2,
     options::{Acknowledgment, TransactionOptions, WriteConcern},
 };
 
@@ -18,6 +25,23 @@ pub(crate) struct CommitTransaction {
 impl CommitTransaction {
     pub(crate) fn new(options: Option<TransactionOptions>) -> Self {
         Self { options }
+    }
+}
+
+impl operation2::Operation for CommitTransaction {
+    fn build(&mut self, _description: &StreamDescription) -> Result<Command<RawDocumentBuf>> {
+        let mut body = rawdoc! {
+            Self::NAME: 1,
+        };
+
+        remove_empty_write_concern!(self.options);
+        append_options_to_raw_document(&mut body, self.options.as_ref())?;
+
+        Ok(Command::new(
+            Self::NAME.to_string(),
+            "admin".to_string(),
+            body,
+        ))
     }
 }
 
