@@ -229,6 +229,8 @@ pub enum MasterKey {
         key_id: Option<String>,
         /// Host with optional port.
         endpoint: Option<String>,
+        /// If true, this key should be decrypted by the KMIP server.
+        delegated: Option<bool>,
     },
 }
 
