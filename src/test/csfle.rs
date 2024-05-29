@@ -91,8 +91,8 @@ static KMS_PROVIDERS: Lazy<KmsProviderList> = Lazy::new(|| {
         (
             KmsProvider::Aws,
             doc! {
-                "accessKeyId": env("AWS_ACCESS_KEY_ID"),
-                "secretAccessKey": env("AWS_SECRET_ACCESS_KEY"),
+                "accessKeyId": env("FLE_AWS_KEY"),
+                "secretAccessKey": env("FLE_AWS_SECRET"),
             },
             None,
         ),
@@ -2618,8 +2618,7 @@ async fn on_demand_aws_failure() -> Result<()> {
     if !check_env("on_demand_aws_failure", false) {
         return Ok(());
     }
-    if std::env::var("AWS_ACCESS_KEY_ID").is_ok() && std::env::var("AWS_SECRET_ACCESS_KEY").is_ok()
-    {
+    if std::env::var("FLE_AWS_KEY").is_ok() && std::env::var("FLE_AWS_SECRET").is_ok() {
         log_uncaptured("Skipping on_demand_aws_failure: credentials set");
         return Ok(());
     }

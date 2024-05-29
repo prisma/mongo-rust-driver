@@ -22,7 +22,7 @@ if [ "$OS" = "Windows_NT" ]; then
   export SSL_CERT_DIR=$(cygpath /etc/ssl/certs --windows)
 fi
 
-. secrets-export.sh
+. ./secrets-export.sh
 
 echo "cargo test options: $(cargo_test_options)"
 
