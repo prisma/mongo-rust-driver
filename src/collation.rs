@@ -9,6 +9,7 @@ use crate::error::{Error, ErrorKind};
 /// [documentation](https://www.mongodb.com/docs/manual/reference/collation/) for more information on
 /// each of the fields.
 #[serde_with::skip_serializing_none]
+// serde impls: used in operation
 #[derive(Clone, Debug, Default, Serialize, Deserialize, TypedBuilder)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -115,6 +116,7 @@ impl TryFrom<u32> for CollationStrength {
     }
 }
 
+// used in operation
 impl Serialize for CollationStrength {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -125,6 +127,7 @@ impl Serialize for CollationStrength {
     }
 }
 
+// used in operation
 impl<'de> Deserialize<'de> for CollationStrength {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -143,6 +146,7 @@ impl std::fmt::Display for CollationStrength {
 
 /// Setting that determines sort order of case differences during case tertiary level comparisons.
 /// For more info, see <http://userguide.icu-project.org/collation/customization>.
+// serde impls: used in operation
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
@@ -193,6 +197,7 @@ impl std::fmt::Display for CollationCaseFirst {
 
 /// Setting that determines whether collation should consider whitespace and punctuation as base
 /// characters for purposes of comparison.
+// serde impls: used in operation
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
@@ -237,6 +242,7 @@ impl std::fmt::Display for CollationAlternate {
 }
 
 /// Field that determines up to which characters are considered ignorable when alternate: "shifted".
+// serde impls: used in operation
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
