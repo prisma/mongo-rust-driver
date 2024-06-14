@@ -54,6 +54,7 @@ pub struct BulkWriteOptions {
 
 /// A single write to be performed within a [`bulk_write`](crate::Client::bulk_write) operation.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Serialize)]
 #[serde(untagged)]
 #[non_exhaustive]
@@ -69,6 +70,7 @@ pub enum WriteModel {
 
 /// Inserts a single document.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Serialize, TypedBuilder)]
 #[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +95,7 @@ impl From<InsertOneModel> for WriteModel {
 
 /// Updates a single document.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Serialize, TypedBuilder)]
 #[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]

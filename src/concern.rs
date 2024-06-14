@@ -198,8 +198,8 @@ impl Serialize for ReadConcernLevel {
 /// See the documentation [here](https://www.mongodb.com/docs/manual/reference/write-concern/) for more
 /// information about write concerns.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Default, PartialEq, TypedBuilder, Serialize, Deserialize)]
-//#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct WriteConcern {
@@ -242,6 +242,7 @@ pub enum Acknowledgment {
     Custom(String),
 }
 
+// serde: used
 impl Serialize for Acknowledgment {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -255,6 +256,7 @@ impl Serialize for Acknowledgment {
     }
 }
 
+// serde: used
 impl<'de> Deserialize<'de> for Acknowledgment {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
