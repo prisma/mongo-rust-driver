@@ -24,6 +24,7 @@ pub(super) struct SummaryInfo {
 }
 
 /// The structure of the response for a single operation within the results cursor.
+// serde: used
 #[derive(Debug, Deserialize)]
 pub(super) struct SingleOperationResponse {
     #[serde(rename = "idx")]
@@ -33,6 +34,7 @@ pub(super) struct SingleOperationResponse {
 }
 
 /// The structure of the non-index fields for a single operation within the results cursor.
+// serde: used
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(super) enum SingleOperationResult {

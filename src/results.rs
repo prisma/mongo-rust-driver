@@ -4,11 +4,16 @@ mod bulk_write;
 
 use std::collections::{HashMap, VecDeque};
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+#[cfg(test)]
+use serde::Serialize;
+#[cfg(test)]
 use serde_with::skip_serializing_none;
 
+#[cfg(test)]
+use crate::bson::serde_helpers;
 use crate::{
-    bson::{serde_helpers, Binary, Bson, Document, RawDocumentBuf},
+    bson::{Binary, Bson, Document, RawDocumentBuf},
     change_stream::event::ResumeToken,
     db::options::CreateCollectionOptions,
     serde_util,
@@ -19,8 +24,8 @@ pub use bulk_write::*;
 
 /// The result of a [`Collection::insert_one`](../struct.Collection.html#method.insert_one)
 /// operation.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(Serialize), serde(rename_all = "camelCase"))]
 #[non_exhaustive]
 pub struct InsertOneResult {
     /// The `_id` field of the document inserted.
@@ -37,8 +42,7 @@ impl InsertOneResult {
 
 /// The result of a [`Collection::insert_many`](../struct.Collection.html#method.insert_many)
 /// operation.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 #[non_exhaustive]
 pub struct InsertManyResult {
     /// The `_id` field of the documents inserted.
@@ -55,17 +59,27 @@ impl InsertManyResult {
 
 /// The result of a [`Collection::update_one`](../struct.Collection.html#method.update_one) or
 /// [`Collection::update_many`](../struct.Collection.html#method.update_many) operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
+#[cfg_attr(
+    test,
+    skip_serializing_none,
+    derive(Serialize),
+    serde(rename_all = "camelCase")
+)]
 #[non_exhaustive]
 pub struct UpdateResult {
     /// The number of documents that matched the filter.
-    #[serde(serialize_with = "crate::bson::serde_helpers::serialize_u64_as_i64")]
+    #[cfg_attr(
+        test,
+        serde(serialize_with = "crate::bson::serde_helpers::serialize_u64_as_i64")
+    )]
     pub matched_count: u64,
 
     /// The number of documents that were modified by the operation.
-    #[serde(serialize_with = "crate::bson::serde_helpers::serialize_u64_as_i64")]
+    #[cfg_attr(
+        test,
+        serde(serialize_with = "crate::bson::serde_helpers::serialize_u64_as_i64")
+    )]
     pub modified_count: u64,
 
     /// The `_id` field of the upserted document.
@@ -74,12 +88,15 @@ pub struct UpdateResult {
 
 /// The result of a [`Collection::delete_one`](../struct.Collection.html#method.delete_one) or
 /// [`Collection::delete_many`](../struct.Collection.html#method.delete_many) operation.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(Serialize), serde(rename_all = "camelCase"))]
 #[non_exhaustive]
 pub struct DeleteResult {
     /// The number of documents deleted by the operation.
-    #[serde(serialize_with = "crate::bson::serde_helpers::serialize_u64_as_i64")]
+    #[cfg_attr(
+        test,
+        serde(serialize_with = "crate::bson::serde_helpers::serialize_u64_as_i64")
+    )]
     pub deleted_count: u64,
 }
 
@@ -120,7 +137,9 @@ pub(crate) struct GetMoreResult {
 
 /// Describes the type of data store returned when executing
 /// [`Database::list_collections`](../struct.Database.html#method.list_collections).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// serde: used
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(Serialize))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub enum CollectionType {
@@ -140,7 +159,9 @@ pub enum CollectionType {
 ///
 /// See the MongoDB [manual](https://www.mongodb.com/docs/manual/reference/command/listCollections/#listCollections.cursor)
 /// for more information.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+// serde: used
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct CollectionSpecificationInfo {
@@ -156,7 +177,8 @@ pub struct CollectionSpecificationInfo {
 /// Information about a collection as reported by
 /// [`Database::list_collections`](../struct.Database.html#method.list_collections).
 // serde: used
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct CollectionSpecification {
@@ -180,7 +202,9 @@ pub struct CollectionSpecification {
 
 /// A struct modeling the information about an individual database returned from
 /// [`Client::list_databases`](../struct.Client.html#method.list_databases).
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+// serde: used
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(Serialize))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct DatabaseSpecification {

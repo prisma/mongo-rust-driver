@@ -26,6 +26,7 @@ const DEFAULT_BUCKET_NAME: &str = "fs";
 const DEFAULT_CHUNK_SIZE_BYTES: u32 = 255 * 1024;
 
 /// A model for the documents stored in the chunks collection.
+// serde: used
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Chunk<'a> {
     #[serde(rename = "_id")]
@@ -39,6 +40,7 @@ pub(crate) struct Chunk<'a> {
 
 /// A model for the documents stored in a GridFS bucket's files
 /// collection.
+// serde: used
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[skip_serializing_none]

@@ -34,6 +34,7 @@ pub struct ReadConcern {
 /// An internal-only read concern type that allows the omission of a "level" as well as
 /// specification of "atClusterTime" and "afterClusterTime".
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[serde(rename = "readConcern")]

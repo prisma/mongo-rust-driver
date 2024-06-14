@@ -29,10 +29,13 @@ pub struct SummaryBulkWriteResult {
 }
 
 /// Verbose results returned from a [`bulk_write`](crate::Client::bulk_write) operation.
-#[cfg_attr(test, serde_with::skip_serializing_none)]
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(test, derive(serde::Serialize))]
-#[cfg_attr(test, serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    test,
+    serde_with::skip_serializing_none,
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 #[non_exhaustive]
 pub struct VerboseBulkWriteResult {
     /// The summary results.

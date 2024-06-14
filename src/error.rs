@@ -9,7 +9,9 @@ use std::{
     sync::Arc,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+#[cfg(test)]
+use serde::Serialize;
 use thiserror::Error;
 
 use crate::{
@@ -718,7 +720,8 @@ impl ErrorKind {
 }
 
 /// An error that occurred due to a database command failing.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+// serde: used
+#[derive(Clone, Debug, Deserialize)]
 #[non_exhaustive]
 pub struct CommandError {
     /// Identifies the type of error.
@@ -758,7 +761,9 @@ impl fmt::Display for CommandError {
 }
 
 /// An error that occurred due to not being able to satisfy a write concern.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+// serde: used
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(Serialize))]
 #[non_exhaustive]
 pub struct WriteConcernError {
     /// Identifies the type of write concern error.
@@ -794,7 +799,9 @@ impl WriteConcernError {
 
 /// An error that occurred during a write operation that wasn't due to being unable to satisfy a
 /// write concern.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+// serde: used
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
 #[non_exhaustive]
 pub struct WriteError {
     /// Identifies the type of write error.
@@ -828,7 +835,8 @@ impl WriteError {
 
 /// An individual write error that occurred during an
 /// [`insert_many`](crate::Collection::insert_many) operation.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+// serde: used
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 #[non_exhaustive]
 pub struct IndexedWriteError {
     /// Index into the list of operations that this error corresponds to.
@@ -866,8 +874,8 @@ impl IndexedWriteError {
 
 /// The set of errors that occurred during a call to
 /// [`insert_many`](crate::Collection::insert_many).
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(Deserialize), serde(rename_all = "camelCase"))]
 #[non_exhaustive]
 pub struct InsertManyError {
     /// The error(s) that occurred on account of a non write concern failure.
@@ -876,7 +884,7 @@ pub struct InsertManyError {
     /// The error that occurred on account of write concern failure.
     pub write_concern_error: Option<WriteConcernError>,
 
-    #[serde(skip)]
+    #[cfg_attr(test, serde(skip))]
     pub(crate) inserted_ids: HashMap<usize, Bson>,
 }
 
@@ -891,7 +899,7 @@ impl InsertManyError {
 }
 
 /// An error that occurred when trying to execute a write operation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum WriteFailure {
     /// An error that occurred due to not being able to satisfy a write concern.
