@@ -155,6 +155,7 @@ pub struct CollectionSpecificationInfo {
 
 /// Information about a collection as reported by
 /// [`Database::list_collections`](../struct.Database.html#method.list_collections).
+// serde: used
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]

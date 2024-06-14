@@ -252,7 +252,7 @@ impl fmt::Display for Namespace {
     }
 }
 
-// serde: used in operation
+// serde: used
 impl<'de> Deserialize<'de> for Namespace {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
@@ -264,7 +264,7 @@ impl<'de> Deserialize<'de> for Namespace {
     }
 }
 
-// serde: used in operation
+// serde: used
 impl Serialize for Namespace {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where

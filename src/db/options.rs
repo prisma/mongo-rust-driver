@@ -15,7 +15,8 @@ use crate::{
 
 /// These are the valid options for creating a [`Database`](../struct.Database.html) with
 /// [`Client::database_with_options`](../struct.Client.html#method.database_with_options).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct DatabaseOptions {
@@ -32,6 +33,7 @@ pub struct DatabaseOptions {
 /// These are the valid options for creating a collection with
 /// [`Database::create_collection`](../struct.Database.html#method.create_collection).
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -121,6 +123,7 @@ pub struct CreateCollectionOptions {
 
 /// Specifies how strictly the database should apply validation rules to existing documents during
 /// an update.
+// serde: used
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -136,6 +139,7 @@ pub enum ValidationLevel {
 
 /// Specifies whether the database should return an error or simply raise a warning if inserted
 /// documents do not pass the validation.
+// serde: used
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -148,6 +152,7 @@ pub enum ValidationAction {
 
 /// Specifies options for a clustered collection.  Some fields have required values; the `Default`
 /// impl uses those values.
+// serde: used
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -207,6 +212,7 @@ impl ClusteredIndex {
 }
 
 /// Specifies default configuration for indexes created on a collection, including the _id index.
+// serde: used
 #[derive(Clone, Debug, TypedBuilder, PartialEq, Serialize, Deserialize)]
 #[builder(field_defaults(default, setter(into)))]
 #[serde(rename_all = "camelCase")]
@@ -220,6 +226,7 @@ pub struct IndexOptionDefaults {
 
 /// Specifies options for creating a timeseries collection.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, TypedBuilder)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -266,6 +273,7 @@ pub struct TimeseriesOptions {
 
 /// The units you'd use to describe the expected interval between subsequent measurements for a
 /// time-series.
+// serde: used
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -279,6 +287,7 @@ pub enum TimeseriesGranularity {
 }
 
 /// Specifies the options to a [`Database::drop`](crate::Database::drop) operation.
+// serde: used
 #[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -291,6 +300,7 @@ pub struct DropDatabaseOptions {
 /// Specifies the options to a
 /// [`Database::list_collections`](../struct.Database.html#method.list_collections) operation.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -326,6 +336,7 @@ pub struct ListCollectionsOptions {
 
 /// Specifies the options to a [`Client::list_databases`](crate::Client::list_databases) operation.
 #[skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -346,6 +357,7 @@ pub struct ListDatabasesOptions {
 }
 
 /// Specifies how change stream pre- and post-images should be supported.
+// serde: used
 #[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
@@ -367,10 +379,11 @@ pub struct RunCommandOptions {
 
 /// Specifies the options to a
 /// [`Database::run_cursor_command`](crate::Database::run_cursor_command) operation.
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
+#[cfg_attr(test, serde(rename_all = "camelCase"))]
+#[cfg_attr(test, serde(default))]
 #[non_exhaustive]
 pub struct RunCursorCommandOptions {
     /// The default read preference for operations.
@@ -379,8 +392,11 @@ pub struct RunCursorCommandOptions {
     pub cursor_type: Option<CursorType>,
     /// Number of documents to return per batch.
     pub batch_size: Option<u32>,
-    #[serde(rename = "maxtime", alias = "maxTimeMS")]
-    #[serde(deserialize_with = "serde_util::deserialize_duration_option_from_u64_millis")]
+    #[cfg_attr(test, serde(rename = "maxtime", alias = "maxTimeMS"))]
+    #[cfg_attr(
+        test,
+        serde(deserialize_with = "serde_util::deserialize_duration_option_from_u64_millis")
+    )]
     /// Optional non-negative integer value. Use this value to configure the maxTimeMS option sent
     /// on subsequent getMore commands.
     pub max_time: Option<Duration>,
