@@ -16,7 +16,9 @@ use crate::{
 /// These are the valid options that can be passed to the `watch` method for creating a
 /// [`ChangeStream`](crate::change_stream::ChangeStream).
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, TypedBuilder)]
+// serde: used
+#[derive(Clone, Debug, Default, Serialize, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]

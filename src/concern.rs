@@ -21,7 +21,9 @@ use crate::{
 /// See the documentation [here](https://www.mongodb.com/docs/manual/reference/read-concern/) for more
 /// information about read concerns.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+// serde: used
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct ReadConcern {
@@ -32,7 +34,7 @@ pub struct ReadConcern {
 /// An internal-only read concern type that allows the omission of a "level" as well as
 /// specification of "atClusterTime" and "afterClusterTime".
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[serde(rename = "readConcern")]
 pub(crate) struct ReadConcernInternal {
@@ -173,6 +175,7 @@ impl ReadConcernLevel {
     }
 }
 
+#[cfg(test)]
 impl<'de> Deserialize<'de> for ReadConcernLevel {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
@@ -180,6 +183,7 @@ impl<'de> Deserialize<'de> for ReadConcernLevel {
     }
 }
 
+// serde: used
 impl Serialize for ReadConcernLevel {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -195,6 +199,7 @@ impl Serialize for ReadConcernLevel {
 /// information about write concerns.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, PartialEq, TypedBuilder, Serialize, Deserialize)]
+//#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct WriteConcern {

@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(test)]
+use serde::{de::Error, Deserializer};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use typed_builder::TypedBuilder;
 
@@ -15,9 +17,10 @@ use crate::{
 
 /// These are the valid options for creating a [`Collection`](crate::Collection) with
 /// [`Database::collection_with_options`](crate::Database::collection_with_options).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
-#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, serde(rename_all = "camelCase"))]
 #[non_exhaustive]
 pub struct CollectionOptions {
     /// The default read preference for operations.
@@ -52,6 +55,7 @@ impl ReturnDocument {
     }
 }
 
+#[cfg(test)]
 impl<'de> Deserialize<'de> for ReturnDocument {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
@@ -67,7 +71,9 @@ impl<'de> Deserialize<'de> for ReturnDocument {
 }
 
 /// Specifies the index to use for an operation.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+// serde: used
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(untagged)]
 #[non_exhaustive]
 pub enum Hint {
@@ -193,9 +199,13 @@ impl From<Vec<Document>> for UpdateModifications {
 /// Specifies the options to a
 /// [`Collection::update_one`](../struct.Collection.html#method.update_one) or
 /// [`Collection::update_many`](../struct.Collection.html#method.update_many) operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(
+    test,
+    skip_serializing_none,
+    derive(Deserialize),
+    serde(rename_all = "camelCase")
+)]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct UpdateOptions {
@@ -231,7 +241,7 @@ pub struct UpdateOptions {
     /// accessed as variables in an aggregate expression context (e.g. "$$var").
     ///
     /// Only available in MongoDB 5.0+.
-    #[serde(rename = "let")]
+    #[cfg_attr(test, serde(rename = "let"))]
     pub let_vars: Option<Document>,
 
     /// Tags the query with an arbitrary [`Bson`] value to help trace the operation through the
@@ -258,9 +268,13 @@ impl UpdateOptions {
 
 /// Specifies the options to a
 /// [`Collection::replace_one`](../struct.Collection.html#method.replace_one) operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(
+    test,
+    skip_serializing_none,
+    derive(Deserialize),
+    serde(rename_all = "camelCase")
+)]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct ReplaceOptions {
@@ -290,7 +304,7 @@ pub struct ReplaceOptions {
     /// accessed as variables in an aggregate expression context (e.g. "$$var").
     ///
     /// Only available in MongoDB 5.0+.
-    #[serde(rename = "let")]
+    #[cfg_attr(test, serde(rename = "let"))]
     pub let_vars: Option<Document>,
 
     /// Tags the query with an arbitrary [`Bson`] value to help trace the operation through the
@@ -304,7 +318,9 @@ pub struct ReplaceOptions {
 /// [`Collection::delete_one`](../struct.Collection.html#method.delete_one) or
 /// [`Collection::delete_many`](../struct.Collection.html#method.delete_many) operation.
 #[serde_with::skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
+// serde: used
+#[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
@@ -340,9 +356,8 @@ pub struct DeleteOptions {
 /// Specifies the options to a
 /// [`Collection::find_one_and_delete`](../struct.Collection.html#method.find_one_and_delete)
 /// operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize), serde(rename_all = "camelCase"))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct FindOneAndDeleteOptions {
@@ -376,7 +391,7 @@ pub struct FindOneAndDeleteOptions {
     /// accessed as variables in an aggregate expression context (e.g. "$$var").
     ///
     /// Only available in MongoDB 5.0+.
-    #[serde(rename = "let")]
+    #[cfg_attr(test, serde(rename = "let"))]
     pub let_vars: Option<Document>,
 
     /// Tags the query with an arbitrary [`Bson`] value to help trace the operation through the
@@ -389,10 +404,14 @@ pub struct FindOneAndDeleteOptions {
 /// Specifies the options to a
 /// [`Collection::find_one_and_replace`](../struct.Collection.html#method.find_one_and_replace)
 /// operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(
+    test,
+    skip_serializing_none,
+    derive(Deserialize),
+    serde(rename_all = "camelCase")
+)]
 #[builder(field_defaults(default, setter(into)))]
-#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct FindOneAndReplaceOptions {
     /// Opt out of document-level validation.
@@ -434,7 +453,7 @@ pub struct FindOneAndReplaceOptions {
     /// accessed as variables in an aggregate expression context (e.g. "$$var").
     ///
     /// Only available in MongoDB 5.0+.
-    #[serde(rename = "let")]
+    #[cfg_attr(test, serde(rename = "let"))]
     pub let_vars: Option<Document>,
 
     /// Tags the query with an arbitrary [`Bson`] value to help trace the operation through the
@@ -447,9 +466,13 @@ pub struct FindOneAndReplaceOptions {
 /// Specifies the options to a
 /// [`Collection::find_one_and_update`](../struct.Collection.html#method.find_one_and_update)
 /// operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(
+    test,
+    skip_serializing_none,
+    derive(Deserialize),
+    serde(rename_all = "camelCase")
+)]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct FindOneAndUpdateOptions {
@@ -498,7 +521,7 @@ pub struct FindOneAndUpdateOptions {
     /// accessed as variables in an aggregate expression context (e.g. "$$var").
     ///
     /// Only available in MongoDB 5.0+.
-    #[serde(rename = "let")]
+    #[cfg_attr(test, serde(rename = "let"))]
     pub let_vars: Option<Document>,
 
     /// Tags the query with an arbitrary [`Bson`] value to help trace the operation through the
@@ -511,7 +534,9 @@ pub struct FindOneAndUpdateOptions {
 /// Specifies the options to a [`Collection::aggregate`](../struct.Collection.html#method.aggregate)
 /// operation.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
+// serde: used
+#[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
@@ -606,9 +631,13 @@ pub struct AggregateOptions {
 
 /// Specifies the options to a
 /// [`Collection::count_documents`](../struct.Collection.html#method.count_documents) operation.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[cfg_attr(
+    test,
+    skip_serializing_none,
+    derive(Deserialize),
+    serde(rename_all = "camelCase")
+)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct CountOptions {
@@ -622,9 +651,12 @@ pub struct CountOptions {
     ///
     /// This options maps to the `maxTimeMS` MongoDB query option, so the duration will be sent
     /// across the wire as an integer number of milliseconds.
-    #[serde(
-        default,
-        deserialize_with = "serde_util::deserialize_duration_option_from_u64_millis"
+    #[cfg_attr(
+        test,
+        serde(
+            default,
+            deserialize_with = "serde_util::deserialize_duration_option_from_u64_millis"
+        )
     )]
     pub max_time: Option<Duration>,
 
@@ -643,7 +675,7 @@ pub struct CountOptions {
     pub selection_criteria: Option<SelectionCriteria>,
 
     /// The level of the read concern.
-    #[serde(skip_serializing)]
+    #[cfg_attr(test, serde(skip_serializing))]
     pub read_concern: Option<ReadConcern>,
 
     /// Tags the query with an arbitrary [`Bson`] value to help trace the operation through the
@@ -661,7 +693,9 @@ pub struct CountOptions {
 ///  `Collection::estimated_document_count`
 /// ](../struct.Collection.html#method.estimated_document_count) operation.
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Default, Deserialize, TypedBuilder, Serialize, Clone)]
+// serde: used
+#[derive(Debug, Default, TypedBuilder, Serialize, Clone)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
@@ -700,7 +734,9 @@ pub struct EstimatedDocumentCountOptions {
 /// Specifies the options to a [`Collection::distinct`](../struct.Collection.html#method.distinct)
 /// operation.
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Default, Deserialize, TypedBuilder, Serialize, Clone)]
+// serde: used
+#[derive(Debug, Default, TypedBuilder, Serialize, Clone)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -743,7 +779,9 @@ pub struct DistinctOptions {
 /// Specifies the options to a [`Collection::find`](../struct.Collection.html#method.find)
 /// operation.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
+// serde: used
+#[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -904,8 +942,8 @@ where
 
 /// Specifies the options to a [`Collection::find_one`](../struct.Collection.html#method.find_one)
 /// operation.
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize), serde(rename_all = "camelCase"))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct FindOneOptions {
@@ -935,16 +973,19 @@ pub struct FindOneOptions {
     ///
     /// Note: this option is deprecated starting in MongoDB version 4.0 and removed in MongoDB 4.2.
     /// Use the maxTimeMS option instead.
-    #[serde(serialize_with = "bson_util::serialize_u64_option_as_i64")]
+    #[cfg_attr(test, serde(serialize_with = "bson_util::serialize_u64_option_as_i64"))]
     pub max_scan: Option<u64>,
 
     /// The maximum amount of time to allow the query to run.
     ///
     /// This options maps to the `maxTimeMS` MongoDB query option, so the duration will be sent
     /// across the wire as an integer number of milliseconds.
-    #[serde(
-        default,
-        deserialize_with = "serde_util::deserialize_duration_option_from_u64_millis"
+    #[cfg_attr(
+        test,
+        serde(
+            default,
+            deserialize_with = "serde_util::deserialize_duration_option_from_u64_millis"
+        )
     )]
     pub max_time: Option<Duration>,
 
@@ -957,7 +998,7 @@ pub struct FindOneOptions {
     /// The read concern to use for this find query.
     ///
     /// If none specified, the default set on the collection will be used.
-    #[serde(skip_serializing)]
+    #[cfg_attr(test, serde(skip_serializing))]
     pub read_concern: Option<ReadConcern>,
 
     /// Whether to return only the index keys in the documents.
@@ -972,7 +1013,7 @@ pub struct FindOneOptions {
     pub show_record_id: Option<bool>,
 
     /// The number of documents to skip before counting.
-    #[serde(serialize_with = "bson_util::serialize_u64_option_as_i64")]
+    #[cfg_attr(test, serde(serialize_with = "bson_util::serialize_u64_option_as_i64"))]
     pub skip: Option<u64>,
 
     /// The order of the documents for the purposes of the operation.
@@ -983,7 +1024,7 @@ pub struct FindOneOptions {
     /// accessed as variables in an aggregate expression context (e.g. "$$var").
     ///
     /// Only available in MongoDB 5.0+.
-    #[serde(rename = "let")]
+    #[cfg_attr(test, serde(rename = "let"))]
     pub let_vars: Option<Document>,
 }
 
@@ -993,6 +1034,7 @@ pub struct FindOneOptions {
 ///
 /// For more information, see [`createIndexes`](https://www.mongodb.com/docs/manual/reference/command/createIndexes/).
 #[serde_with::skip_serializing_none]
+// serde: used
 #[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
 #[builder(field_defaults(default, setter(into)))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1026,7 +1068,9 @@ pub struct CreateIndexOptions {
 /// Specifies the options to a [`Collection::drop`](../struct.Collection.html#method.drop)
 /// operation.
 #[serde_with::skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
+// serde: used
+#[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
@@ -1046,7 +1090,9 @@ pub struct DropCollectionOptions {
 /// [`Collection::drop_index`](../struct.Collection.html#method.drop_index) or
 /// [`Collection::drop_indexes`](../struct.Collection.html#method.drop_indexes) operation.
 #[serde_with::skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
+// serde: used
+#[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
@@ -1076,7 +1122,9 @@ pub struct DropIndexOptions {
 /// Specifies the options to a
 /// [`Collection::list_indexes`](../struct.Collection.html#method.list_indexes) operation.
 #[serde_with::skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder, Serialize)]
+// serde: used
+#[derive(Clone, Debug, Default, TypedBuilder, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
@@ -1125,6 +1173,7 @@ pub enum CommitQuorum {
     Custom(String),
 }
 
+// serde: used
 impl Serialize for CommitQuorum {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -1139,6 +1188,7 @@ impl Serialize for CommitQuorum {
     }
 }
 
+#[cfg(test)]
 impl<'de> Deserialize<'de> for CommitQuorum {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where

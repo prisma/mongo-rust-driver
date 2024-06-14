@@ -357,10 +357,9 @@ pub struct ServerApi {
 }
 
 /// Contains the options that can be used to create a new [`Client`](../struct.Client.html).
-#[derive(Clone, Derivative, Deserialize, TypedBuilder)]
+#[derive(Clone, Derivative, TypedBuilder)]
 #[builder(field_defaults(default, setter(into)))]
 #[derivative(Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct ClientOptions {
     /// The initial list of seeds that the Client should connect to.
@@ -372,7 +371,6 @@ pub struct ClientOptions {
         host: \"localhost\".to_string(),
         port: Some(27017),
     }]")]
-    #[serde(default = "default_hosts")]
     pub hosts: Vec<ServerAddress>,
 
     /// The application name that the Client will send to the server as part of the handshake. This
@@ -389,13 +387,11 @@ pub struct ClientOptions {
         feature = "zlib-compression",
         feature = "snappy-compression"
     ))]
-    #[serde(skip)]
     pub compressors: Option<Vec<Compressor>>,
 
     /// The handler that should process all Connection Monitoring and Pooling events.
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     #[builder(setter(strip_option))]
-    #[serde(skip)]
     pub cmap_event_handler: Option<EventHandler<crate::event::cmap::CmapEvent>>,
 
     /// The handler that should process all command-related events.
@@ -403,7 +399,6 @@ pub struct ClientOptions {
     /// Note that monitoring command events may incur a performance penalty.
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     #[builder(setter(strip_option))]
-    #[serde(skip)]
     pub command_event_handler: Option<EventHandler<crate::event::command::CommandEvent>>,
 
     /// The connect timeout passed to each underlying TcpStream when attemtping to connect to the
@@ -432,7 +427,6 @@ pub struct ClientOptions {
 
     /// Whether or not the client is connecting to a MongoDB cluster through a load balancer.
     #[builder(setter(skip))]
-    #[serde(rename = "loadbalanced")]
     pub load_balanced: Option<bool>,
 
     /// When running a read operation with a ReadPreference that allows selecting secondaries,
@@ -499,7 +493,6 @@ pub struct ClientOptions {
     /// The handler that should process all Server Discovery and Monitoring events.
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     #[builder(setter(strip_option))]
-    #[serde(skip)]
     pub sdam_event_handler: Option<EventHandler<crate::event::sdam::SdamEvent>>,
 
     /// The default selection criteria for operations performed on the Client. See the
@@ -560,7 +553,6 @@ pub struct ClientOptions {
 
     /// Information from the SRV URI that generated these client options, if applicable.
     #[builder(setter(skip))]
-    #[serde(skip)]
     #[derivative(Debug = "ignore")]
     pub(crate) original_srv_info: Option<OriginalSrvInfo>,
 
@@ -575,7 +567,6 @@ pub struct ClientOptions {
     /// On Windows, there is a known performance issue in trust-dns with using the default system
     /// configuration, so a custom configuration is recommended.
     #[builder(setter(skip))]
-    #[serde(skip)]
     #[derivative(Debug = "ignore")]
     #[cfg(feature = "dns-resolver")]
     pub(crate) resolver_config: Option<ResolverConfig>,
@@ -583,7 +574,6 @@ pub struct ClientOptions {
     /// Control test behavior of the client.
     #[cfg(test)]
     #[builder(setter(skip))]
-    #[serde(skip)]
     #[derivative(PartialEq = "ignore")]
     pub(crate) test_options: Option<TestOptions>,
 }
@@ -607,10 +597,6 @@ pub(crate) struct TestOptions {
 pub(crate) type TestEventSender = tokio::sync::mpsc::Sender<
     crate::runtime::AcknowledgedMessage<crate::event::command::CommandEvent>,
 >;
-
-fn default_hosts() -> Vec<ServerAddress> {
-    vec![ServerAddress::default()]
-}
 
 impl Default for ClientOptions {
     fn default() -> Self {
@@ -2584,9 +2570,10 @@ mod tests {
 }
 
 /// Contains the options that can be used to create a new [`ClientSession`](crate::ClientSession).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
-#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, serde(rename_all = "camelCase"))]
 #[non_exhaustive]
 pub struct SessionOptions {
     /// The default options to use for transactions started on this session.
@@ -2626,7 +2613,9 @@ impl SessionOptions {
 
 /// Contains the options that can be used for a transaction.
 #[skip_serializing_none]
-#[derive(Debug, Default, Serialize, Deserialize, TypedBuilder, Clone)]
+// serde: used
+#[derive(Debug, Default, Serialize, TypedBuilder, Clone)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]

@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 
-use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use serde::Deserialize;
+use serde::Serialize;
 use serde_with::skip_serializing_none;
 use typed_builder::TypedBuilder;
 
@@ -16,7 +18,8 @@ use crate::{
 
 /// The supported options for [`bulk_write`](crate::Client::bulk_write).
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct BulkWriteOptions {

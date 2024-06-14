@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+#[cfg(test)]
 use serde::Deserialize;
 use typed_builder::TypedBuilder;
 
@@ -9,7 +10,8 @@ use crate::{
 };
 
 /// Contains the options for creating a [`GridFsBucket`](crate::gridfs::GridFsBucket).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct GridFsBucketOptions {
@@ -30,8 +32,8 @@ pub struct GridFsBucketOptions {
 }
 
 /// Contains the options for uploading a file to a [`GridFsBucket`](crate::gridfs::GridFsBucket).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize), serde(rename_all = "camelCase"))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct GridFsUploadOptions {
@@ -45,7 +47,8 @@ pub struct GridFsUploadOptions {
 
 /// Contains the options for downloading a file from a [`GridFsBucket`](crate::gridfs::GridFsBucket)
 /// by name.
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct GridFsDownloadByNameOptions {
@@ -65,7 +68,8 @@ pub struct GridFsDownloadByNameOptions {
 /// Contains the options for finding
 /// [`FilesCollectionDocument`](crate::gridfs::FilesCollectionDocument)s in a
 /// [`GridFsBucket`](crate::gridfs::GridFsBucket).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct GridFsFindOptions {
@@ -107,7 +111,8 @@ impl From<GridFsFindOptions> for FindOptions {
 /// Contains the options for finding a single
 /// [`FilesCollectionDocument`](crate::gridfs::FilesCollectionDocument) in a
 /// [`GridFsBucket`](crate::gridfs::GridFsBucket).
-#[derive(Clone, Debug, Default, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, Default, TypedBuilder)]
+#[cfg_attr(test, derive(Deserialize))]
 #[builder(field_defaults(default, setter(into)))]
 #[non_exhaustive]
 pub struct GridFsFindOneOptions {
